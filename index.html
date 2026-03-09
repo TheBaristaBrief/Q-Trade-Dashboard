@@ -1,0 +1,2222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qatar Trade Intelligence Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy:#0a1628;--navy-mid:#112240;--gold:#c9a84c;--gold-light:#e8c96a;
+    --teal:#1a7f8e;--teal-light:#2ab0c4;--green:#1abc9c;--white:#f8f6f0;
+    --text-dim:#8ea3c0;--border:rgba(201,168,76,0.2);--card-bg:rgba(17,34,64,0.9);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'IBM Plex Sans',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(26,127,142,0.15),transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(201,168,76,0.08),transparent 50%);pointer-events:none;z-index:0}
+
+  header{position:sticky;top:0;z-index:100;background:rgba(10,22,40,0.97);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px}
+  .header-brand{display:flex;align-items:center;gap:1rem}
+  .qatar-emblem{width:40px;height:40px}
+  .brand-text h1{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);letter-spacing:.02em;line-height:1.2}
+  .brand-text span{font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase}
+  .header-meta{display:flex;align-items:center;gap:1.2rem}
+  .live-badge{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+  .source-tag{font-size:.6rem;padding:2px 7px;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase}
+  .currency-toggle{display:flex;align-items:center;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+  .currency-btn{padding:4px 10px;background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:.68rem;font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.05em}
+  .currency-btn.active{background:var(--gold);color:var(--navy);font-weight:700}
+
+  .tabs-nav{display:flex;align-items:center;padding:0 2rem;background:rgba(10,22,40,0.8);border-bottom:1px solid var(--border)}
+  .tab-btn{padding:.9rem 1.4rem;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-family:'IBM Plex Sans',sans-serif;font-size:.74rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .tab-btn:hover{color:var(--gold-light)}
+  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+  .tab-num{font-size:.6rem;color:var(--gold);margin-right:.4rem;font-family:'IBM Plex Mono',monospace}
+  main{position:relative;z-index:1}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  /* NEWS */
+  .news-layout{display:grid;grid-template-columns:1fr 320px;min-height:calc(100vh - 112px)}
+  .news-feed{padding:2rem;border-right:1px solid var(--border)}
+  .news-sidebar{padding:2rem 1.5rem;background:rgba(17,34,64,0.4)}
+  .section-label{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-family:'IBM Plex Mono',monospace;margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+  .news-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  .news-card{background:var(--card-bg);border:1px solid var(--border);padding:1.2rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+  .news-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold);transform:scaleY(0);transition:transform .2s;transform-origin:bottom}
+  .news-card:hover{border-color:rgba(201,168,76,.5);transform:translateY(-2px)}
+  .news-card:hover::before{transform:scaleY(1)}
+  .news-card.hormuz{grid-column:span 2;background:linear-gradient(135deg,rgba(192,57,43,.18),rgba(17,34,64,.95));border:2px solid rgba(192,57,43,.6);border-left:4px solid #c0392b;animation:hormuzPulse 3s ease infinite}
+  @keyframes hormuzPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,0)}50%{box-shadow:0 0 18px 4px rgba(192,57,43,.2)}}
+  .news-card.hormuz::before{display:none}
+  .hormuz-banner{display:flex;align-items:center;gap:.6rem;background:rgba(192,57,43,.25);border:1px solid rgba(192,57,43,.5);padding:.3rem .7rem;margin-bottom:.7rem;font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:#ff6b6b;width:fit-content}
+  .hormuz-blink{animation:blink 1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  .news-card.featured{grid-column:span 2;background:linear-gradient(135deg,rgba(26,127,142,.15),rgba(17,34,64,.9));border-color:rgba(26,127,142,.4)}
+  .news-card.featured::before{background:var(--teal-light);transform:scaleY(1)}
+  .news-category{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;margin-bottom:.6rem;font-family:'IBM Plex Mono',monospace}
+  .cat-trade{color:var(--teal-light)}.cat-energy{color:var(--gold)}.cat-sanctions{color:#e74c3c}.cat-policy{color:#9b59b6}.cat-logistics{color:#e67e22}.cat-critical{color:#ff6b6b}
+  .news-headline{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;line-height:1.4;margin-bottom:.5rem;color:var(--white)}
+  .news-card.featured .news-headline,.news-card.hormuz .news-headline{font-size:1.2rem}
+  .news-excerpt{font-size:.78rem;color:var(--text-dim);line-height:1.6;margin-bottom:.8rem}
+  .news-meta{display:flex;align-items:center;justify-content:space-between;font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+  .news-impact{display:flex;align-items:center;gap:.3rem}
+  .impact-dot{width:6px;height:6px;border-radius:50%}
+  .impact-high{background:#e74c3c}.impact-med{background:#f39c12}.impact-low{background:var(--green)}
+  .risk-item{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.75rem}
+  .risk-label{color:var(--text-dim)}
+  .risk-bar-wrap{width:80px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+  .risk-bar{height:100%;border-radius:2px}
+  .trade-ticker{font-family:'IBM Plex Mono',monospace;font-size:.7rem}
+  .ticker-item{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .ticker-up{color:var(--green)}.ticker-down{color:#e74c3c}
+  .alert-item{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-left:3px solid #e74c3c;padding:.7rem;margin-bottom:.5rem;font-size:.72rem;line-height:1.5}
+  .alert-item.warning{background:rgba(243,156,18,.1);border-color:rgba(243,156,18,.3);border-left-color:#f39c12}
+  .alert-item.critical{background:rgba(192,57,43,.15);border-color:rgba(192,57,43,.5);border-left-color:#ff6b6b}
+
+  /* DASHBOARD */
+  .dashboard-layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 112px)}
+  .filter-sidebar{background:rgba(10,22,40,.95);border-right:1px solid var(--border);padding:1.5rem;overflow-y:auto}
+  .filter-group{margin-bottom:1.5rem}
+  .filter-label{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-family:'IBM Plex Mono',monospace;margin-bottom:.5rem;display:block}
+  .filter-select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.55rem .8rem;font-family:'IBM Plex Sans',sans-serif;font-size:.78rem;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .8rem center;padding-right:2rem}
+  .filter-select:focus{border-color:var(--gold)}
+  .filter-select option{background:var(--navy-mid)}
+  .filter-toggle-group{display:flex;border:1px solid var(--border)}
+  .filter-toggle{flex:1;padding:.5rem;background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Sans',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;text-align:center}
+  .filter-toggle.active{background:var(--gold);color:var(--navy);font-weight:600}
+  .hs-level-group{display:flex;border:1px solid var(--border);margin-bottom:.5rem}
+  .hs-level-btn{flex:1;padding:.4rem;background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:.65rem;cursor:pointer;transition:all .2s;text-align:center}
+  .hs-level-btn.active{background:rgba(201,168,76,.2);color:var(--gold)}
+  .hs-search input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.55rem .8rem;font-family:'IBM Plex Mono',monospace;font-size:.75rem;outline:none}
+  .hs-results{max-height:120px;overflow-y:auto;border:1px solid var(--border);border-top:none;background:var(--navy-mid)}
+  .hs-item{padding:.4rem .8rem;font-size:.7rem;cursor:pointer;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+  .hs-item:hover{background:rgba(201,168,76,.1);color:var(--gold)}
+  .hs-selected{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem}
+  .hs-tag{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.4);color:var(--gold);font-size:.62rem;padding:2px 6px;font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;gap:4px;cursor:pointer}
+  .year-range{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+  .apply-btn{width:100%;background:var(--gold);color:var(--navy);border:none;padding:.7rem;font-family:'IBM Plex Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:.5rem}
+  .apply-btn:hover{background:var(--gold-light)}
+  .data-source-info{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+  .source-item{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;font-size:.68rem;color:var(--text-dim)}
+  .source-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+  .dash-body{padding:1.5rem;overflow-y:auto}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem}
+  .kpi-card{background:var(--card-bg);border:1px solid var(--border);padding:1rem;position:relative;overflow:hidden}
+  .kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+  .kpi-label{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.4rem}
+  .kpi-value{font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:500;color:var(--white);line-height:1;margin-bottom:.3rem}
+  .kpi-sub{font-size:.68rem;font-family:'IBM Plex Mono',monospace}
+  .kpi-pos{color:var(--green)}.kpi-neg{color:#e74c3c}
+  .chart-card{background:var(--card-bg);border:1px solid var(--border);padding:1.2rem;position:relative}
+  .chart-title{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.3rem;display:flex;align-items:center;justify-content:space-between}
+  .chart-title-main{font-family:'IBM Plex Sans',sans-serif;font-size:.85rem;font-weight:500;color:var(--white);margin-bottom:1rem}
+  .chart-wrap{position:relative;height:200px}
+  .chart-wrap-tall{height:260px}
+  .balance-indicator{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+  .balance-value{font-family:'IBM Plex Mono',monospace;font-size:1.6rem;font-weight:500}
+  .balance-pos{color:var(--green)}.balance-neg{color:#e74c3c}
+  .dep-table{width:100%;border-collapse:collapse;font-size:.72rem}
+  .dep-table th{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);padding:.4rem .5rem;text-align:left;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace}
+  .dep-table td{padding:.5rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--white)}
+  .dep-mini-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+  .dep-mini-fill{height:100%;border-radius:2px}
+
+  /* TRANSPORT */
+  .transport-layout{padding:2rem}
+  .transport-kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem}
+  .transport-charts-top{display:grid;grid-template-columns:1.5fr 1fr;gap:1rem;margin-bottom:1rem}
+  .transport-charts-mid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
+  .transport-charts-bot{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem}
+  .mode-transport-badge{display:inline-flex;align-items:center;gap:.3rem;padding:3px 9px;font-size:.63rem;font-family:'IBM Plex Mono',monospace;border-radius:2px;border:1px solid}
+  .mt-sea{background:rgba(26,127,142,.18);color:var(--teal-light);border-color:rgba(26,127,142,.4)}
+  .mt-air{background:rgba(52,152,219,.18);color:#7fb3d3;border-color:rgba(52,152,219,.35)}
+  .mt-road{background:rgba(230,126,34,.18);color:#e6a96a;border-color:rgba(230,126,34,.35)}
+  .mt-rail{background:rgba(155,89,182,.18);color:#c39bd3;border-color:rgba(155,89,182,.35)}
+  .mt-postal{background:rgba(26,188,156,.15);color:var(--green);border-color:rgba(26,188,156,.3)}
+  .mt-other{background:rgba(142,163,192,.12);color:var(--text-dim);border-color:rgba(142,163,192,.3)}
+  .hormuz-panel{background:linear-gradient(135deg,rgba(192,57,43,.12),rgba(17,34,64,.95));border:1px solid rgba(192,57,43,.4);border-left:3px solid #c0392b;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:1.2rem}
+  .hormuz-stat{text-align:center;flex-shrink:0;padding:0 1rem;border-right:1px solid rgba(192,57,43,.3)}
+  .hormuz-stat:last-child{border-right:none}
+  .hormuz-stat-val{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:600;color:#ff6b6b}
+  .hormuz-stat-lbl{font-size:.62rem;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+
+  /* SERVICES */
+  .services-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+  .services-charts{display:grid;grid-template-columns:1.5fr 1fr;gap:1rem;margin-bottom:1rem}
+  .services-table-section{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .mode-badge{display:inline-block;padding:2px 8px;font-size:.62rem;font-family:'IBM Plex Mono',monospace;letter-spacing:.05em;border-radius:2px}
+  .mode-1{background:rgba(26,127,142,.2);color:var(--teal-light);border:1px solid rgba(26,127,142,.4)}
+  .mode-2{background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.3)}
+  .mode-3{background:rgba(155,89,182,.2);color:#c39bd3;border:1px solid rgba(155,89,182,.4)}
+  .mode-4{background:rgba(26,188,156,.15);color:var(--green);border:1px solid rgba(26,188,156,.3)}
+
+  /* SOURCES */
+  .sources-layout{padding:2rem;max-width:900px;margin:0 auto}
+  .source-card{background:var(--card-bg);border:1px solid var(--border);padding:1.5rem;margin-bottom:1rem;display:grid;grid-template-columns:auto 1fr auto;gap:1.5rem;align-items:center}
+  .source-icon{width:48px;height:48px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+  .source-info h3{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);margin-bottom:.3rem}
+  .source-info p{font-size:.78rem;color:var(--text-dim);line-height:1.5}
+  .source-link{color:var(--teal-light);font-size:.72rem;font-family:'IBM Plex Mono',monospace;text-decoration:none;border:1px solid rgba(26,127,142,.4);padding:.4rem .8rem;transition:all .2s;display:block;text-align:center;white-space:nowrap}
+  .source-link:hover{background:rgba(26,127,142,.2);border-color:var(--teal-light)}
+
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:rgba(255,255,255,.02)}
+  ::-webkit-scrollbar-thumb{background:rgba(201,168,76,.3)}
+  .fade-in{animation:fadeIn .4s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ESSENTIAL GOODS */
+  .eg-layout{padding:2rem;max-width:1600px}
+  .eg-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+  .eg-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem}
+  .eg-filter-bar{display:flex;align-items:center;gap:.8rem;margin-bottom:1.5rem;flex-wrap:wrap;padding:.8rem 1rem;background:rgba(17,34,64,.6);border:1px solid var(--border)}
+  .eg-filter-btn{padding:.35rem .9rem;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.08em;cursor:pointer;transition:all .2s;text-transform:uppercase}
+  .eg-filter-btn:hover{border-color:var(--gold);color:var(--gold)}
+  .eg-filter-btn.active{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:700}
+  .eg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+  .eg-commodity-card{background:var(--card-bg);border:1px solid var(--border);padding:1.1rem;position:relative;cursor:pointer;transition:all .2s;overflow:hidden}
+  .eg-commodity-card:hover{border-color:rgba(201,168,76,.5);transform:translateY(-1px)}
+  .eg-commodity-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.3)}
+  .eg-commodity-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+  .eg-commodity-card.risk-critical::before{background:#c0392b}
+  .eg-commodity-card.risk-high::before{background:#e74c3c}
+  .eg-commodity-card.risk-medium::before{background:#f39c12}
+  .eg-commodity-card.risk-low::before{background:var(--green)}
+  .eg-cat-badge{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+  .eg-cat-food{color:var(--gold)}
+  .eg-cat-nonfood{color:var(--teal-light)}
+  .eg-commodity-name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--white);margin-bottom:.5rem;line-height:1.3}
+  .eg-commodity-hs{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--text-dim);margin-bottom:.6rem}
+  .eg-dep-bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem}
+  .eg-dep-bar-label{font-size:.62rem;color:var(--text-dim);width:52px;flex-shrink:0;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .eg-dep-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+  .eg-dep-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+  .eg-dep-bar-pct{font-size:.6rem;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);width:28px;text-align:right;flex-shrink:0}
+  .eg-risk-pill{display:inline-flex;align-items:center;gap:.3rem;padding:2px 8px;font-size:.58rem;font-family:'IBM Plex Mono',monospace;border-radius:2px;letter-spacing:.06em;font-weight:600;text-transform:uppercase;margin-top:.5rem}
+  .eg-risk-pill.critical{background:rgba(192,57,43,.2);color:#ff6b6b;border:1px solid rgba(192,57,43,.4)}
+  .eg-risk-pill.high{background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.35)}
+  .eg-risk-pill.medium{background:rgba(243,156,18,.12);color:#f39c12;border:1px solid rgba(243,156,18,.3)}
+  .eg-risk-pill.low{background:rgba(26,188,156,.12);color:var(--green);border:1px solid rgba(26,188,156,.3)}
+  .eg-transport-pills{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem}
+  .eg-detail-panel{background:var(--card-bg);border:1px solid var(--border);padding:1.5rem;margin-bottom:1.5rem}
+  .eg-detail-grid{display:grid;grid-template-columns:1fr 1.5fr 1.2fr;gap:1.5rem}
+  .eg-impact-tag{display:inline-flex;align-items:center;gap:.3rem;padding:3px 8px;font-size:.62rem;font-family:'IBM Plex Mono',monospace;border-radius:2px;border:1px solid}
+  .eg-impact-hormuz{background:rgba(192,57,43,.15);color:#ff6b6b;border-color:rgba(192,57,43,.4)}
+  .eg-impact-redsea{background:rgba(243,156,18,.1);color:#f39c12;border-color:rgba(243,156,18,.3)}
+  .eg-impact-tariff{background:rgba(155,89,182,.12);color:#c39bd3;border-color:rgba(155,89,182,.3)}
+  .eg-impact-climate{background:rgba(52,152,219,.1);color:#7fb3d3;border-color:rgba(52,152,219,.3)}
+  .eg-impact-geo{background:rgba(231,76,60,.1);color:#e74c3c;border-color:rgba(231,76,60,.3)}
+  .eg-analysis-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  .eg-full-row{margin-bottom:1.5rem}
+  .eg-legend-row{display:flex;align-items:center;gap:1.2rem;font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-bottom:.8rem;flex-wrap:wrap}
+  .eg-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.3rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="qatar-emblem">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="19" stroke="#c9a84c" stroke-width="1"/>
+        <path d="M8 20 Q14 8 20 20 Q26 32 32 20" stroke="#c9a84c" stroke-width="1.5" fill="none"/>
+        <path d="M8 20 Q14 32 20 20 Q26 8 32 20" stroke="#8ea3c0" stroke-width="0.8" fill="none"/>
+        <circle cx="20" cy="20" r="3" fill="#c9a84c" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Qatar Trade Intelligence</h1>
+      <span>Ministry of Commerce &amp; Industry · Trade Affairs Division</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="live-badge"><div class="live-dot"></div>Live Data</div>
+    <div style="display:flex;gap:.5rem;">
+      <span class="source-tag">UN Comtrade</span>
+      <span class="source-tag">WTO BaTIS</span>
+      <span class="source-tag">Data.gov.qa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <span style="font-size:.6rem;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Currency</span>
+      <div class="currency-toggle">
+        <button class="currency-btn active" id="btn-usd" onclick="setCurrency('USD')">USD</button>
+        <div style="width:1px;background:var(--border);height:20px;"></div>
+        <button class="currency-btn" id="btn-qar" onclick="setCurrency('QAR')">QAR</button>
+      </div>
+    </div>
+    <div style="font-size:.68rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;"><span id="clock"></span></div>
+  </div>
+</header>
+
+<nav class="tabs-nav">
+  <button class="tab-btn active" onclick="switchTab('news',this)"><span class="tab-num">01</span>Trade Intelligence</button>
+  <button class="tab-btn" onclick="switchTab('dashboard',this)"><span class="tab-num">02</span>Trade Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('transport',this)"><span class="tab-num">03</span>Transport &amp; Logistics</button>
+  <button class="tab-btn" onclick="switchTab('services',this)"><span class="tab-num">04</span>Services Trade (BaTIS)</button>
+  <button class="tab-btn" onclick="switchTab('essential',this)"><span class="tab-num">05</span>Essential Goods (MOCI)</button>
+  <button class="tab-btn" onclick="switchTab('sources',this)"><span class="tab-num">06</span>Data Sources &amp; API</button>
+</nav>
+
+<main>
+
+<!-- TAB 1: NEWS -->
+<div id="tab-news" class="tab-panel active fade-in">
+  <div class="news-layout">
+    <div class="news-feed">
+      <div class="section-label">Regional Trade Intelligence — March 2026</div>
+      <div class="news-grid">
+
+        <div class="news-card hormuz">
+          <div class="hormuz-banner"><span class="hormuz-blink">●</span> CRITICAL STRATEGIC RISK — ACTIVE MONITORING</div>
+          <div class="news-category cat-critical">🚨 Strait of Hormuz · Existential Trade Risk</div>
+          <div class="news-headline">Strait of Hormuz Tensions Escalate — Qatar's Entire LNG Export Route Under Threat</div>
+          <div class="news-excerpt">Heightened military posturing between Iran and US naval forces in the Persian Gulf has raised acute concerns about the viability of the Strait of Hormuz as a trade corridor. The strait is the world's most critical energy chokepoint — approximately <strong style="color:#ff6b6b;">97% of Qatar's LNG exports and 95% of all Qatar seaborne trade</strong> transit through it. Any disruption, even temporary, would halt Qatar's primary revenue stream. QatarEnergy's emergency diversion protocols are under active review. The Sultanate of Oman's Port of Duqm is being evaluated as a partial contingency routing option via overland pipeline.</div>
+          <div style="display:flex;gap:1.5rem;margin-top:.8rem;padding-top:.8rem;border-top:1px solid rgba(192,57,43,.3);">
+            <div class="hormuz-stat"><div class="hormuz-stat-val">97%</div><div class="hormuz-stat-lbl">LNG Transit Share</div></div>
+            <div class="hormuz-stat"><div class="hormuz-stat-val">21M bbl/d</div><div class="hormuz-stat-lbl">Global oil at risk</div></div>
+            <div class="hormuz-stat"><div class="hormuz-stat-val">$84B+</div><div class="hormuz-stat-lbl">Exports exposed</div></div>
+            <div class="hormuz-stat"><div class="hormuz-stat-val" style="color:#ff6b6b;">CRITICAL</div><div class="hormuz-stat-lbl">Risk level</div></div>
+          </div>
+          <div class="news-meta" style="margin-top:.8rem;">
+            <span>Reuters · WSJ · S&amp;P Global Platts · Mar 2026</span>
+            <div class="news-impact"><div class="impact-dot impact-high"></div><div class="impact-dot impact-high"></div> CRITICAL</div>
+          </div>
+        </div>
+
+        <div class="news-card featured">
+          <div class="news-category cat-trade">🔴 Breaking · Trade Policy</div>
+          <div class="news-headline">US Tariff Escalation Reshapes Gulf Trade Routes — Qatar LNG Exemptions Secured</div>
+          <div class="news-excerpt">Broad tariff measures under Section 301 have created significant trade realignment. Qatar's LNG exports remain exempt due to energy security agreements, but manufactured goods face 15–25% surcharges. MCI monitoring cascading effects on re-export volumes through Hamad Port, which recorded a 12% dip in transit TEUs in Q1 2025.</div>
+          <div class="news-meta"><span>Reuters · Financial Times · Mar 2026</span><div class="news-impact"><div class="impact-dot impact-high"></div> High Impact</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-energy">⚡ Energy Trade</div>
+          <div class="news-headline">QatarEnergy Expands LNG Supply Agreements with European Buyers</div>
+          <div class="news-excerpt">New 15-year SPAs signed with Shell, TotalEnergies and Equinor add 8 MTPA capacity following North Field expansion. Europe share of Qatar LNG exports rises to 38%.</div>
+          <div class="news-meta"><span>S&amp;P Global · Mar 2026</span><div class="news-impact"><div class="impact-dot impact-high"></div> High Impact</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-sanctions">⚠ Sanctions Watch</div>
+          <div class="news-headline">Iran Sanctions Tightening — Gulf Re-export Risk Assessment Updated</div>
+          <div class="news-excerpt">OFAC secondary sanctions expansion targets entities facilitating Iranian petroleum re-exports. Qatar compliance teams reviewing 47 active trade relationships for exposure.</div>
+          <div class="news-meta"><span>OFAC · Mar 2026</span><div class="news-impact"><div class="impact-dot impact-high"></div> High Impact</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-logistics">🚢 Logistics</div>
+          <div class="news-headline">Red Sea Disruptions Cost Qatar Exports 3.2% Additional Freight Premium</div>
+          <div class="news-excerpt">Houthi maritime attacks continue rerouting 85% of container traffic around Cape of Good Hope, adding 14 days transit and significant cost increases for Qatar's non-LNG exports.</div>
+          <div class="news-meta"><span>Lloyd's List · Feb 2026</span><div class="news-impact"><div class="impact-dot impact-med"></div> Medium</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-policy">📋 GCC Policy</div>
+          <div class="news-headline">GCC Unified Customs Territory Advances — New Rules of Origin Framework</div>
+          <div class="news-excerpt">GCC Secretariat finalizes harmonized rules of origin for industrial goods. Qatar exporters gain preferential access under revised criteria effective June 2026.</div>
+          <div class="news-meta"><span>GCC Secretariat · Feb 2026</span><div class="news-impact"><div class="impact-dot impact-med"></div> Medium</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-trade">🤝 Trade Agreements</div>
+          <div class="news-headline">GCC-India FTA Negotiations Resume — Agricultural &amp; Services Chapters Reopened</div>
+          <div class="news-excerpt">Fifth round of GCC-India FTA talks cover market access for Indian professional services and Gulf petrochemical exports. Qatar leads on petrochemical tariff elimination schedule.</div>
+          <div class="news-meta"><span>Hindu BusinessLine · Feb 2026</span><div class="news-impact"><div class="impact-dot impact-med"></div> Medium</div></div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-category cat-energy">🏗 Infrastructure</div>
+          <div class="news-headline">Doha Free Zone Phase II Opens — $2.1B Investment in Petrochemical Hub</div>
+          <div class="news-excerpt">QFC and MCI launch Phase II targeting specialty chemical manufacturers and logistics operators. 23 anchor tenants signed ahead of opening ceremony.</div>
+          <div class="news-meta"><span>Qatar News Agency · Jan 2026</span><div class="news-impact"><div class="impact-dot impact-low"></div> Monitor</div></div>
+        </div>
+
+      </div>
+    </div>
+    <div class="news-sidebar">
+      <div class="section-label">Risk Indicators</div>
+      <div style="margin-bottom:1.5rem;">
+        <div class="risk-item"><span class="risk-label" style="color:#ff6b6b;font-weight:500;">Strait of Hormuz</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:92%;background:#c0392b;"></div></div><span style="font-size:.63rem;color:#ff6b6b;font-family:'IBM Plex Mono',monospace;font-weight:700;">CRITICAL</span></div>
+        <div class="risk-item"><span class="risk-label">US Tariff Risk</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:72%;background:#e74c3c;"></div></div><span style="font-size:.68rem;color:#e74c3c;font-family:'IBM Plex Mono',monospace;">HIGH</span></div>
+        <div class="risk-item"><span class="risk-label">Red Sea Disruption</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:65%;background:#e74c3c;"></div></div><span style="font-size:.68rem;color:#e74c3c;font-family:'IBM Plex Mono',monospace;">HIGH</span></div>
+        <div class="risk-item"><span class="risk-label">Sanctions Exposure</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:38%;background:#f39c12;"></div></div><span style="font-size:.68rem;color:#f39c12;font-family:'IBM Plex Mono',monospace;">MED</span></div>
+        <div class="risk-item"><span class="risk-label">Currency Volatility</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:22%;background:var(--green);"></div></div><span style="font-size:.68rem;color:var(--green);font-family:'IBM Plex Mono',monospace;">LOW</span></div>
+        <div class="risk-item"><span class="risk-label">GCC Integration</span><div class="risk-bar-wrap"><div class="risk-bar" style="width:20%;background:var(--green);"></div></div><span style="font-size:.68rem;color:var(--green);font-family:'IBM Plex Mono',monospace;">LOW</span></div>
+      </div>
+      <div class="section-label">Key Commodity Prices</div>
+      <div class="trade-ticker">
+        <div class="ticker-item"><span>LNG Spot ($/MMBtu)</span><span class="ticker-up">▲ 14.82</span></div>
+        <div class="ticker-item"><span>Brent Crude ($/bbl)</span><span class="ticker-down">▼ 78.40</span></div>
+        <div class="ticker-item"><span>Petrochemicals Idx</span><span class="ticker-up">▲ 1,247</span></div>
+        <div class="ticker-item"><span>Steel ($/MT)</span><span class="ticker-down">▼ 520</span></div>
+        <div class="ticker-item"><span>Aluminium ($/MT)</span><span class="ticker-up">▲ 2,380</span></div>
+        <div class="ticker-item"><span>USD/QAR</span><span style="color:var(--text-dim);">3.6400</span></div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <div class="section-label">Active Trade Alerts</div>
+        <div class="alert-item critical">🚨 <strong>Hormuz:</strong> US-Iran naval standoff. LNG tanker re-routing protocols activated by QatarEnergy.</div>
+        <div class="alert-item">🔴 <strong>US Section 301:</strong> Monitor partner-country exposure. 3 re-export pathways under review.</div>
+        <div class="alert-item">🔴 <strong>Red Sea:</strong> 14 vessels rerouted via Cape. ETA delays +12 days avg.</div>
+        <div class="alert-item warning">🟡 <strong>India FTA:</strong> Petrochemical deadlock. Next round: April 2026.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: DASHBOARD -->
+<div id="tab-dashboard" class="tab-panel fade-in">
+  <div class="dashboard-layout">
+    <div class="filter-sidebar">
+      <div class="section-label" style="margin-bottom:1rem;">Filter Parameters</div>
+      <div class="filter-group">
+        <label class="filter-label">Trade Flow</label>
+        <div class="filter-toggle-group">
+          <button class="filter-toggle active" onclick="toggleFilter(this)">Exports</button>
+          <button class="filter-toggle" onclick="toggleFilter(this)">Imports</button>
+          <button class="filter-toggle" onclick="toggleFilter(this)">Both</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Partner Country</label>
+        <select class="filter-select" id="sel-country" onchange="updateDashboard()">
+          <option value="world">🌐 World (All Partners)</option>
+          <optgroup label="── GCC ──">
+            <option value="sa">🇸🇦 Saudi Arabia</option>
+            <option value="ae">🇦🇪 UAE</option>
+            <option value="kw">🇰🇼 Kuwait</option>
+            <option value="om">🇴🇲 Oman</option>
+            <option value="bh">🇧🇭 Bahrain</option>
+          </optgroup>
+          <optgroup label="── East Asia ──">
+            <option value="cn">🇨🇳 China</option>
+            <option value="jp">🇯🇵 Japan</option>
+            <option value="kr">🇰🇷 South Korea</option>
+            <option value="tw">🇹🇼 Taiwan</option>
+            <option value="sg">🇸🇬 Singapore</option>
+            <option value="hk">🇭🇰 Hong Kong</option>
+          </optgroup>
+          <optgroup label="── South Asia ──">
+            <option value="in">🇮🇳 India</option>
+            <option value="pk">🇵🇰 Pakistan</option>
+            <option value="bd">🇧🇩 Bangladesh</option>
+            <option value="lk">🇱🇰 Sri Lanka</option>
+            <option value="np">🇳🇵 Nepal</option>
+          </optgroup>
+          <optgroup label="── Southeast Asia ──">
+            <option value="my">🇲🇾 Malaysia</option>
+            <option value="th">🇹🇭 Thailand</option>
+            <option value="id">🇮🇩 Indonesia</option>
+            <option value="ph">🇵🇭 Philippines</option>
+            <option value="vn">🇻🇳 Vietnam</option>
+          </optgroup>
+          <optgroup label="── Europe ──">
+            <option value="de">🇩🇪 Germany</option>
+            <option value="uk">🇬🇧 United Kingdom</option>
+            <option value="fr">🇫🇷 France</option>
+            <option value="it">🇮🇹 Italy</option>
+            <option value="nl">🇳🇱 Netherlands</option>
+            <option value="es">🇪🇸 Spain</option>
+            <option value="be">🇧🇪 Belgium</option>
+            <option value="ch">🇨🇭 Switzerland</option>
+            <option value="at">🇦🇹 Austria</option>
+            <option value="gr">🇬🇷 Greece</option>
+            <option value="tr">🇹🇷 Turkey</option>
+          </optgroup>
+          <optgroup label="── Americas ──">
+            <option value="us">🇺🇸 United States</option>
+            <option value="ca">🇨🇦 Canada</option>
+            <option value="br">🇧🇷 Brazil</option>
+            <option value="ar">🇦🇷 Argentina</option>
+            <option value="mx">🇲🇽 Mexico</option>
+          </optgroup>
+          <optgroup label="── MENA ──">
+            <option value="eg">🇪🇬 Egypt</option>
+            <option value="jo">🇯🇴 Jordan</option>
+            <option value="lb">🇱🇧 Lebanon</option>
+            <option value="iq">🇮🇶 Iraq</option>
+            <option value="ir">🇮🇷 Iran</option>
+            <option value="ma">🇲🇦 Morocco</option>
+            <option value="tn">🇹🇳 Tunisia</option>
+            <option value="ly">🇱🇾 Libya</option>
+            <option value="ye">🇾🇪 Yemen</option>
+          </optgroup>
+          <optgroup label="── Africa ──">
+            <option value="za">🇿🇦 South Africa</option>
+            <option value="ng">🇳🇬 Nigeria</option>
+            <option value="et">🇪🇹 Ethiopia</option>
+            <option value="ke">🇰🇪 Kenya</option>
+            <option value="so">🇸🇴 Somalia</option>
+            <option value="dz">🇩🇿 Algeria</option>
+            <option value="tz">🇹🇿 Tanzania</option>
+          </optgroup>
+          <optgroup label="── Oceania ──">
+            <option value="au">🇦🇺 Australia</option>
+            <option value="nz">🇳🇿 New Zealand</option>
+          </optgroup>
+          <optgroup label="── Central Asia / CIS ──">
+            <option value="ru">🇷🇺 Russia</option>
+            <option value="kz">🇰🇿 Kazakhstan</option>
+            <option value="uz">🇺🇿 Uzbekistan</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Trade Type</label>
+        <div class="filter-toggle-group">
+          <button class="filter-toggle active" onclick="toggleFilter(this)">Goods</button>
+          <button class="filter-toggle" onclick="toggleFilter(this)">Services</button>
+          <button class="filter-toggle" onclick="toggleFilter(this)">Both</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">HS Classification Level</label>
+        <div class="hs-level-group">
+          <button class="hs-level-btn" onclick="setHSLevel(this,2)">HS2</button>
+          <button class="hs-level-btn" onclick="setHSLevel(this,4)">HS4</button>
+          <button class="hs-level-btn active" onclick="setHSLevel(this,6)">HS6</button>
+        </div>
+        <div style="font-size:.6rem;color:var(--text-dim);margin-top:.3rem;font-family:'IBM Plex Mono',monospace;">Max granularity: <span style="color:var(--gold);" id="hs-level-note">HS6 (6-digit subheading)</span></div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">HS Code / Product</label>
+        <div class="hs-search"><input type="text" placeholder="Search HS code or product..." id="hs-input" oninput="searchHS(this.value)"><div class="hs-results" id="hs-dropdown" style="display:none"></div></div>
+        <div class="hs-selected" id="hs-selected"><span class="hs-tag" data-hs="271111" onclick="this.remove()">271111 — LNG ✕</span></div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Year Range</label>
+        <div class="year-range">
+          <select class="filter-select"><option>2015</option><option>2016</option><option>2017</option><option>2018</option><option>2019</option><option selected>2020</option></select>
+          <select class="filter-select"><option>2023</option><option selected>2024</option></select>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Reporting Frequency</label>
+        <select class="filter-select"><option>Annual</option><option>Monthly</option></select>
+      </div>
+      <button class="apply-btn" onclick="updateDashboard()">⟳ Apply Filters</button>
+      <div class="data-source-info">
+        <div class="filter-label" style="margin-bottom:.5rem;">Active Data Sources</div>
+        <div class="source-item"><div class="source-dot" style="background:var(--teal-light)"></div>UN Comtrade — Goods flows</div>
+        <div class="source-item"><div class="source-dot" style="background:var(--gold)"></div>WTO BaTIS — Services</div>
+        <div class="source-item"><div class="source-dot" style="background:#9b59b6"></div>Data.gov.qa — National stats</div>
+        <div class="source-item"><div class="source-dot" style="background:#e67e22"></div>World Bank — Supplemental</div>
+      </div>
+    </div>
+    <div class="dash-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;padding-bottom:.8rem;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--white);" id="dash-title">Qatar ↔ World — All Goods (HS6: 271111)</div>
+          <div style="font-size:.68rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-top:.2rem;">Source: UN Comtrade · 2020–2024 · Annual · Values in <span id="currency-label-dash">USD Billion</span></div>
+        </div>
+        <button style="background:rgba(201,168,76,.1);border:1px solid var(--border);color:var(--text-dim);padding:.4rem .8rem;font-size:.68rem;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" onclick="exportData()">↓ Export CSV</button>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="kpi-label">Total Exports</div><div class="kpi-value" id="kpi-exp">$84.2B</div><div class="kpi-sub kpi-pos">▲ 8.3% YoY</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Imports</div><div class="kpi-value" id="kpi-imp">$38.6B</div><div class="kpi-sub kpi-neg">▼ 2.1% YoY</div></div>
+        <div class="kpi-card"><div class="kpi-label">Trade Balance</div><div class="kpi-value" style="color:var(--green)" id="kpi-bal">+$45.6B</div><div class="kpi-sub kpi-pos">Surplus</div></div>
+        <div class="kpi-card"><div class="kpi-label">Active Partners</div><div class="kpi-value" id="kpi-partners">187</div><div class="kpi-sub" style="color:var(--text-dim)">Countries</div></div>
+        <div class="kpi-card"><div class="kpi-label">Export Concentration</div><div class="kpi-value" id="kpi-hhi">HHI 0.34</div><div class="kpi-sub" style="color:#f39c12;">Moderate</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div class="chart-card"><div class="chart-title">Historical Trade Flow</div><div class="chart-title-main">Export &amp; Import Trend 2015–2024</div><div class="chart-wrap chart-wrap-tall"><canvas id="histChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Trade Balance</div><div class="chart-title-main">Annual Surplus / Deficit</div><div class="balance-indicator"><div class="balance-value balance-pos" id="bal-big">+$45.6B</div><div style="font-size:.7rem;color:var(--text-dim)">2024 Surplus</div></div><div class="chart-wrap" style="height:190px;"><canvas id="balanceChart"></canvas></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div class="chart-card"><div class="chart-title">Export Composition by HS Chapter</div><div class="chart-title-main">Product Breakdown 2024</div><div class="chart-wrap chart-wrap-tall"><canvas id="composChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Top Export Partners</div><div class="chart-title-main">Share by Destination</div><div class="chart-wrap" style="height:240px;"><canvas id="partnerChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Import Sourcing</div><div class="chart-title-main">Top Origin Countries</div><div class="chart-wrap" style="height:240px;"><canvas id="importChart"></canvas></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="chart-card">
+          <div class="chart-title">Trade Dependency Analysis</div><div class="chart-title-main">Partner Concentration &amp; HHI Risk</div>
+          <table class="dep-table">
+            <thead><tr><th>Partner</th><th>Export Share</th><th>Import Share</th><th>Balance</th><th>Risk</th><th>↑↓</th></tr></thead>
+            <tbody>
+              <tr><td>🇨🇳 China</td><td><div>18.2%</div><div class="dep-mini-bar"><div class="dep-mini-fill" style="width:18.2%;background:var(--teal-light);"></div></div></td><td>9.4%</td><td class="kpi-pos" id="dep-cn">+$8.1B</td><td><span style="color:#f39c12;font-size:.65rem;">MED</span></td><td style="color:var(--green);">▲</td></tr>
+              <tr><td>🇯🇵 Japan</td><td><div>17.1%</div><div class="dep-mini-bar"><div class="dep-mini-fill" style="width:17.1%;background:var(--gold);"></div></div></td><td>4.2%</td><td class="kpi-pos" id="dep-jp">+$11.2B</td><td><span style="color:#f39c12;font-size:.65rem;">MED</span></td><td style="color:var(--text-dim);">→</td></tr>
+              <tr><td>🇰🇷 S.Korea</td><td><div>12.4%</div><div class="dep-mini-bar"><div class="dep-mini-fill" style="width:12.4%;background:#9b59b6;"></div></div></td><td>5.1%</td><td class="kpi-pos" id="dep-kr">+$6.8B</td><td><span style="color:var(--green);font-size:.65rem;">LOW</span></td><td style="color:var(--green);">▲</td></tr>
+              <tr><td>🇮🇳 India</td><td><div>11.8%</div><div class="dep-mini-bar"><div class="dep-mini-fill" style="width:11.8%;background:#e67e22;"></div></div></td><td>12.8%</td><td class="kpi-neg" id="dep-in">-$0.5B</td><td><span style="color:#e74c3c;font-size:.65rem;">HIGH</span></td><td style="color:var(--green);">▲</td></tr>
+              <tr><td>🇬🇧 UK</td><td><div>5.2%</div><div class="dep-mini-bar"><div class="dep-mini-fill" style="width:5.2%;background:var(--teal-light);"></div></div></td><td>4.8%</td><td class="kpi-pos" id="dep-uk">+$0.4B</td><td><span style="color:var(--green);font-size:.65rem;">LOW</span></td><td style="color:var(--text-dim);">→</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Goods vs Services Split</div><div class="chart-title-main">Trade Composition 2024</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;height:260px;">
+            <div><div style="font-size:.65rem;color:var(--text-dim);margin-bottom:.4rem;text-align:center;">EXPORTS</div><div class="chart-wrap" style="height:200px;"><canvas id="goodsServExp"></canvas></div></div>
+            <div><div style="font-size:.65rem;color:var(--text-dim);margin-bottom:.4rem;text-align:center;">IMPORTS</div><div class="chart-wrap" style="height:200px;"><canvas id="goodsServImp"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: TRANSPORT -->
+<div id="tab-transport" class="tab-panel fade-in">
+  <div class="transport-layout">
+    <div style="margin-bottom:1.5rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div class="section-label">UN Comtrade — Mode of Transport · Data.gov.qa · Hamad Port Authority</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);">Transport &amp; Logistics Dashboard</div>
+        <div style="font-size:.7rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-top:.3rem;">Source: UN Comtrade motCode (1=Sea, 2=Rail, 3=Road, 4=Air, 5=Postal, 9=Other) · Values in <span id="currency-label-transport">USD Billion</span></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <span class="mode-transport-badge mt-sea">🚢 Sea</span>
+        <span class="mode-transport-badge mt-air">✈ Air</span>
+        <span class="mode-transport-badge mt-road">🚛 Road</span>
+        <span class="mode-transport-badge mt-rail">🚂 Rail</span>
+        <span class="mode-transport-badge mt-postal">📦 Postal</span>
+        <span class="mode-transport-badge mt-other">⚙ Other</span>
+      </div>
+    </div>
+
+    <div class="hormuz-panel">
+      <div style="font-size:1.8rem;flex-shrink:0;">⚓</div>
+      <div style="flex:1;">
+        <div style="font-size:.65rem;color:#ff6b6b;letter-spacing:.15em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;margin-bottom:.3rem;">🚨 Active Chokepoint Alert — Strait of Hormuz</div>
+        <div style="font-size:.82rem;color:var(--white);font-weight:500;margin-bottom:.3rem;">97% of Qatar's seaborne trade transits the Strait of Hormuz (21 miles wide at its narrowest). Current US-Iran military posturing raises disruption risk to CRITICAL. Contingency routing via Oman's Duqm port assessed.</div>
+        <div style="font-size:.7rem;color:var(--text-dim);">Hamad Port status: <span style="color:var(--green);">NORMAL</span> · LNG tanker departures: <span style="color:var(--green);">NORMAL</span> · Red Sea re-routes: <span style="color:#f39c12;">ACTIVE</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem;text-align:center;padding-left:1.2rem;border-left:1px solid rgba(192,57,43,.3);">
+        <div class="hormuz-stat"><div class="hormuz-stat-val">97%</div><div class="hormuz-stat-lbl">Sea trade via Hormuz</div></div>
+        <div class="hormuz-stat"><div class="hormuz-stat-val">21mi</div><div class="hormuz-stat-lbl">Narrowest point</div></div>
+      </div>
+    </div>
+
+    <div class="transport-kpi">
+      <div class="kpi-card"><div class="kpi-label">Sea (FOB Export)</div><div class="kpi-value" id="tr-sea">$78.4B</div><div class="kpi-sub" style="color:var(--teal-light);">93.1% of exports</div></div>
+      <div class="kpi-card"><div class="kpi-label">Air Freight (Export)</div><div class="kpi-value" id="tr-air">$3.8B</div><div class="kpi-sub" style="color:#7fb3d3;">4.5% of exports</div></div>
+      <div class="kpi-card"><div class="kpi-label">Road (Export)</div><div class="kpi-value" id="tr-road">$1.6B</div><div class="kpi-sub" style="color:#e6a96a;">1.9% — GCC land</div></div>
+      <div class="kpi-card"><div class="kpi-label">Hamad Port TEU</div><div class="kpi-value">2.1M</div><div class="kpi-sub kpi-pos">▲ 7.2% YoY</div></div>
+      <div class="kpi-card"><div class="kpi-label">Avg Sea Transit</div><div class="kpi-value">18.4d</div><div class="kpi-sub kpi-neg">▲ +3.1d (Red Sea)</div></div>
+    </div>
+
+    <div class="transport-charts-top">
+      <div class="chart-card"><div class="chart-title">Transport Mode Split — Exports vs Imports</div><div class="chart-title-main">By Mode of Transport (Value, 2024)</div><div class="chart-wrap chart-wrap-tall"><canvas id="modeBarChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Export Mode Share</div><div class="chart-title-main">% by Transport Mode</div><div class="chart-wrap chart-wrap-tall"><canvas id="modePieChart"></canvas></div></div>
+    </div>
+
+    <div class="transport-charts-mid">
+      <div class="chart-card"><div class="chart-title">Sea Transport — Historical Trend</div><div class="chart-title-main">Maritime Export &amp; Import Volume 2015–2024</div><div class="chart-wrap chart-wrap-tall"><canvas id="seaTrendChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Air Freight by Commodity</div><div class="chart-title-main">Top HS Chapters via Air (2024)</div><div class="chart-wrap chart-wrap-tall"><canvas id="airComChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Road Trade — GCC Corridors</div><div class="chart-title-main">Land Border Trade by Partner</div><div class="chart-wrap chart-wrap-tall"><canvas id="roadChart"></canvas></div></div>
+    </div>
+
+    <div class="transport-charts-bot">
+      <div class="chart-card"><div class="chart-title">Mode Mix Evolution 2015–2024</div><div class="chart-title-main">How Transport Mode Share Has Shifted (Exports %)</div><div class="chart-wrap chart-wrap-tall"><canvas id="modeMixChart"></canvas></div></div>
+      <div class="chart-card">
+        <div class="chart-title">Port Performance</div><div class="chart-title-main">Hamad Port Throughput 2019–2024</div>
+        <table class="dep-table" style="margin-top:.5rem;">
+          <thead><tr><th>Year</th><th>TEU (M)</th><th>Bulk (MT)</th><th>YoY</th></tr></thead>
+          <tbody>
+            <tr><td>2024</td><td>2.10</td><td>42.8</td><td class="kpi-pos">▲ 7.2%</td></tr>
+            <tr><td>2023</td><td>1.96</td><td>39.1</td><td class="kpi-pos">▲ 5.4%</td></tr>
+            <tr><td>2022</td><td>1.86</td><td>37.4</td><td class="kpi-pos">▲ 11.4%</td></tr>
+            <tr><td>2021</td><td>1.67</td><td>33.5</td><td class="kpi-pos">▲ 8.4%</td></tr>
+            <tr><td>2020</td><td>1.54</td><td>30.9</td><td class="kpi-neg">▼ 3.1%</td></tr>
+            <tr><td>2019</td><td>1.59</td><td>31.9</td><td class="kpi-pos">▲ 2.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: SERVICES -->
+<div id="tab-services" class="tab-panel fade-in">
+  <div style="padding:2rem;">
+    <div style="margin-bottom:1.5rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div class="section-label">WTO BaTIS — Balanced Trade in Services Dataset</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);">Services Trade Dashboard</div>
+        <div style="font-size:.7rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-top:.3rem;">Source: WTO BaTIS 2024 · EBOPS 2010 · Modes of Supply 1–4 · Values in <span id="currency-label-serv">USD Billion</span></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <span class="mode-badge mode-1">Mode 1: Cross-border</span>
+        <span class="mode-badge mode-2">Mode 2: Consumption Abroad</span>
+        <span class="mode-badge mode-3">Mode 3: Commercial Presence</span>
+        <span class="mode-badge mode-4">Mode 4: Natural Persons</span>
+      </div>
+    </div>
+    <div class="services-kpi">
+      <div class="kpi-card"><div class="kpi-label">Services Exports</div><div class="kpi-value" id="serv-exp">$14.8B</div><div class="kpi-sub kpi-pos">▲ 11.2% YoY</div></div>
+      <div class="kpi-card"><div class="kpi-label">Services Imports</div><div class="kpi-value" id="serv-imp">$22.4B</div><div class="kpi-sub kpi-neg">Services Deficit</div></div>
+      <div class="kpi-card"><div class="kpi-label">Services Balance</div><div class="kpi-value" style="color:#e74c3c;" id="serv-bal">-$7.6B</div><div class="kpi-sub kpi-neg">▼ Deficit</div></div>
+      <div class="kpi-card"><div class="kpi-label">Services % of Exports</div><div class="kpi-value">14.9%</div><div class="kpi-sub kpi-pos">▲ Growing</div></div>
+    </div>
+    <div class="services-charts">
+      <div class="chart-card"><div class="chart-title">Services by Category — EBOPS 2010</div><div class="chart-title-main">Export &amp; Import Breakdown by Service Type (2024)</div><div class="chart-wrap chart-wrap-tall"><canvas id="servCatChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Mode of Supply Distribution</div><div class="chart-title-main">GATS Modes 1–4 (Export)</div><div class="chart-wrap chart-wrap-tall"><canvas id="modeChart"></canvas></div></div>
+    </div>
+    <div class="services-table-section">
+      <div class="chart-card">
+        <div class="chart-title">Top Service Export Categories</div><div class="chart-title-main">By Value, 2024</div>
+        <table class="dep-table">
+          <thead><tr><th>Service Category</th><th>Exports</th><th>Mode</th><th>Growth</th></tr></thead>
+          <tbody>
+            <tr><td>Transport (Aviation &amp; Maritime)</td><td id="se1">$4.2B</td><td><span class="mode-badge mode-1">M1</span></td><td class="kpi-pos">▲ 18%</td></tr>
+            <tr><td>Travel &amp; Tourism</td><td id="se2">$3.6B</td><td><span class="mode-badge mode-2">M2</span></td><td class="kpi-pos">▲ 22%</td></tr>
+            <tr><td>Financial Services (QFC)</td><td id="se3">$2.1B</td><td><span class="mode-badge mode-3">M3</span></td><td class="kpi-pos">▲ 9%</td></tr>
+            <tr><td>Business &amp; Professional Svcs</td><td id="se4">$1.8B</td><td><span class="mode-badge mode-4">M4</span></td><td class="kpi-pos">▲ 7%</td></tr>
+            <tr><td>Telecommunications &amp; IT</td><td id="se5">$1.4B</td><td><span class="mode-badge mode-1">M1</span></td><td class="kpi-pos">▲ 31%</td></tr>
+            <tr><td>Construction Services</td><td id="se6">$0.9B</td><td><span class="mode-badge mode-3">M3</span></td><td class="kpi-neg">▼ 4%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="chart-card"><div class="chart-title">Services Historical Trend</div><div class="chart-title-main">Exports vs Imports 2015–2024</div><div class="chart-wrap chart-wrap-tall"><canvas id="servHistChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: SOURCES -->
+<div id="tab-sources" class="tab-panel fade-in">
+  <div class="sources-layout">
+    <div class="section-label">Integrated Data Infrastructure</div>
+    <div class="source-card">
+      <div class="source-icon">🌐</div>
+      <div class="source-info">
+        <h3>UN Comtrade — Goods Trade Database</h3>
+        <p>The world's most comprehensive merchandise trade statistics database. Qatar data available at <strong style="color:var(--gold)">HS2 (chapter) → HS4 (heading) → HS6 (subheading, maximum available)</strong>. Also captures transport mode codes (motCode: 1=Sea, 2=Rail, 3=Road, 4=Air, 5=Postal, 9=Other) — the basis for Tab 3's logistics analysis.</p>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;"><span class="source-tag">HS2/HS4/HS6</span><span class="source-tag">motCode Transport</span><span class="source-tag">Annual &amp; Monthly</span><span class="source-tag">REST API</span></div>
+      </div>
+      <a href="https://comtradeplus.un.org/TradeFlow" target="_blank" class="source-link">Open Comtrade ↗</a>
+    </div>
+    <div class="source-card">
+      <div class="source-icon">🇶🇦</div>
+      <div class="source-info">
+        <h3>Data.gov.qa — Qatar Open Data Portal</h3>
+        <p>Qatar's national open data portal maintained by the Planning and Statistics Authority (PSA). Provides domestic trade statistics, Hamad Port throughput (TEU, bulk tonnage), free zone performance, and QFC data. Essential for ground-truth validation and port logistics analysis.</p>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;"><span class="source-tag">National Stats</span><span class="source-tag">Port Data</span><span class="source-tag">PSA</span><span class="source-tag">Quarterly</span></div>
+      </div>
+      <a href="https://www.data.gov.qa/pages/homepage/" target="_blank" class="source-link">Open Data.gov.qa ↗</a>
+    </div>
+    <div class="source-card">
+      <div class="source-icon">📊</div>
+      <div class="source-info">
+        <h3>WTO BaTIS — Balanced Trade in Services</h3>
+        <p>The WTO's Balanced Trade in Services dataset covering Mode 1–4 services trade under GATS framework using EBOPS 2010 classification. BaTIS reconciles asymmetries between reporting countries to provide the most reliable bilateral services trade data available for Qatar.</p>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;"><span class="source-tag">EBOPS 2010</span><span class="source-tag">Modes 1–4</span><span class="source-tag">Bilateral</span><span class="source-tag">Annual</span></div>
+      </div>
+      <a href="https://www.wto.org/english/res_e/statis_e/gstdh_mode_supply_e.htm" target="_blank" class="source-link">Open WTO BaTIS ↗</a>
+    </div>
+    <div class="source-card">
+      <div class="source-icon">🏦</div>
+      <div class="source-info">
+        <h3>World Bank — WITS (World Integrated Trade Solution)</h3>
+        <p>Access to trade and tariff data from UN Comtrade, UNCTAD TRAINS, and WTO. Useful for tariff analysis, policy simulation, and NTB assessments relevant to GCC FTA negotiations.</p>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;"><span class="source-tag">Tariff Data</span><span class="source-tag">TRAINS</span><span class="source-tag">Policy Simulation</span></div>
+      </div>
+      <a href="https://wits.worldbank.org/" target="_blank" class="source-link">Open WITS ↗</a>
+    </div>
+    <div style="margin-top:1.5rem;padding:1.5rem;background:rgba(26,127,142,.08);border:1px solid rgba(26,127,142,.2);">
+      <div class="section-label" style="margin-bottom:1rem;">API Integration Guide</div>
+      <div style="font-size:.75rem;color:var(--text-dim);line-height:1.8;font-family:'IBM Plex Mono',monospace;">
+        <div style="color:var(--gold);margin-bottom:.4rem;"># UN Comtrade — Qatar HS6 Exports with Transport Mode</div>
+        <div style="color:var(--teal-light);">GET https://comtradeapi.un.org/data/v1/get/C/A/HS</div>
+        <div>?reporterCode=634&amp;period=2024&amp;flowCode=X&amp;cmdCode=271111&amp;motCode=1</div>
+        <div style="color:var(--text-dim);margin-top:.2rem;">(motCode: 1=Sea, 2=Rail, 3=Road, 4=Air, 5=Post, 9=Other)</div>
+        <br>
+        <div style="color:var(--gold);margin-bottom:.4rem;"># WTO BaTIS Stats API</div>
+        <div style="color:var(--teal-light);">GET https://api.wto.org/timeseries/v1/data</div>
+        <div>?i=TS_M_5740&amp;r=QAT&amp;p=default&amp;ps=2020-2024&amp;fmt=json</div>
+        <br>
+        <div style="color:var(--gold);margin-bottom:.4rem;"># Data.gov.qa CKAN API</div>
+        <div style="color:var(--teal-light);">GET https://www.data.gov.qa/api/3/action/datastore_search</div>
+        <div>?resource_id={hamad_port_resource_id}&amp;limit=100</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: ESSENTIAL GOODS (MOCI) -->
+<div id="tab-essential" class="tab-panel fade-in">
+<div class="eg-layout">
+
+  <div class="eg-header">
+    <div>
+      <div class="section-label">MOCI Price Committee — Law No. 12 of 1972 · Controlled Commodities</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);">Essential Goods — Supply Chain Dependency Analysis</div>
+      <div style="font-size:.7rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-top:.3rem;">
+        Source: MOCI Maximum Price &amp; Profit Margin Committee · Qatar Law No.12/1972 · Mapped against UN Comtrade import data
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;">
+      <a href="https://www.moci.gov.qa/en/%E2%80%8B%D9%82%D8%A7%D8%A6%D9%85%D8%A9-%D8%A7%D9%84%D8%B3%D9%84%D8%B9-%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%8A-%D8%AA%D8%AE%D8%B6%D8%B9-%D8%A7%D9%84%D8%B2%D9%8A%D8%A7/" target="_blank" style="font-size:.68rem;color:var(--teal-light);font-family:'IBM Plex Mono',monospace;text-decoration:none;border:1px solid rgba(26,127,142,.4);padding:.35rem .8rem;transition:all .2s;">View MOCI List ↗</a>
+      <div style="font-size:.62rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;text-align:right;">14 Food · 6 Non-Food · 13 Services categories controlled</div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="eg-kpi-row">
+    <div class="kpi-card"><div class="kpi-label">Controlled Food Items</div><div class="kpi-value">14</div><div class="kpi-sub" style="color:var(--gold);">Price-regulated</div></div>
+    <div class="kpi-card"><div class="kpi-label">Non-Food Categories</div><div class="kpi-value">6</div><div class="kpi-sub" style="color:var(--teal-light);">Goods regulated</div></div>
+    <div class="kpi-card"><div class="kpi-label">Critical Risk Items</div><div class="kpi-value" style="color:#ff6b6b;">4</div><div class="kpi-sub" style="color:#ff6b6b;">Hormuz + single-source</div></div>
+    <div class="kpi-card"><div class="kpi-label">High Import Dependency</div><div class="kpi-value" style="color:#e74c3c;">11</div><div class="kpi-sub" style="color:#e74c3c;">&gt;80% imported</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avg Source Concentration</div><div class="kpi-value">HHI 0.41</div><div class="kpi-sub" style="color:#f39c12;">Moderate-High</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="eg-filter-bar">
+    <span style="font-size:.62rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin-right:.3rem;">View:</span>
+    <button class="eg-filter-btn active" onclick="egFilter('all',this)">All Goods</button>
+    <button class="eg-filter-btn" onclick="egFilter('food',this)">Food Only</button>
+    <button class="eg-filter-btn" onclick="egFilter('nonfood',this)">Non-Food Only</button>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 .3rem;"></div>
+    <button class="eg-filter-btn" onclick="egFilter('critical',this)">🚨 Critical Risk</button>
+    <button class="eg-filter-btn" onclick="egFilter('high',this)">🔴 High Risk</button>
+    <button class="eg-filter-btn" onclick="egFilter('hormuz',this)">⚓ Hormuz-exposed</button>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 .3rem;"></div>
+    <span style="font-size:.62rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;">Click a card to drill into detail ↓</span>
+  </div>
+
+  <!-- COMMODITY CARDS GRID -->
+  <div class="eg-grid" id="eg-cards-grid">
+
+    <!-- FOOD 1: Dairy -->
+    <div class="eg-commodity-card risk-high" data-cat="food" data-risk="high" data-hormuz="true" onclick="egSelect(this,'dairy')">
+      <div class="eg-cat-badge eg-cat-food">🥛 Food Commodity</div>
+      <div class="eg-commodity-name">Dairy Products</div>
+      <div class="eg-commodity-hs">HS 0401–0406, 1901 · Powdered milk · Baby formula · Evaporated milk</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">New Zealand</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:34%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">34%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Australia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:22%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">22%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Netherlands</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">France</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:11%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">11%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill high">🔴 High Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 98%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 2: Red Meat -->
+    <div class="eg-commodity-card risk-high" data-cat="food" data-risk="high" data-hormuz="true" onclick="egSelect(this,'redmeat')">
+      <div class="eg-cat-badge eg-cat-food">🥩 Food Commodity</div>
+      <div class="eg-commodity-name">Red Meat &amp; Live Sheep</div>
+      <div class="eg-commodity-hs">HS 0101–0104, 0201–0204 · Live sheep · Slaughtered (local &amp; imported)</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Australia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:48%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">48%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Somalia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:19%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">19%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Brazil</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill high">🔴 High Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 95%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 3: Poultry -->
+    <div class="eg-commodity-card risk-medium" data-cat="food" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'poultry')">
+      <div class="eg-cat-badge eg-cat-food">🍗 Food Commodity</div>
+      <div class="eg-commodity-name">White Meat (Poultry)</div>
+      <div class="eg-commodity-hs">HS 0105, 0207 · Live · Chilled · Frozen</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Qatar (local)</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:42%;background:var(--green);"></div></div><span class="eg-dep-bar-pct">42%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Brazil</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:28%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">28%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">USA</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">France</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:9%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">9%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 88%</span><span class="mode-transport-badge mt-road" style="font-size:.55rem;padding:2px 5px;">🚛 Road 12%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 4: Vegetables & Fruits -->
+    <div class="eg-commodity-card risk-critical" data-cat="food" data-risk="critical" data-hormuz="true" onclick="egSelect(this,'vegfruit')">
+      <div class="eg-cat-badge eg-cat-food">🥦 Food Commodity</div>
+      <div class="eg-commodity-name">Vegetables &amp; Fruits</div>
+      <div class="eg-commodity-hs">HS 0701–0714, 0801–0814 · Fresh &amp; chilled produce</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:38%;background:#e74c3c;"></div></div><span class="eg-dep-bar-pct">38%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Jordan</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Egypt</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Qatar (local)</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:var(--green);"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill critical">🚨 Critical Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 64%</span><span class="mode-transport-badge mt-road" style="font-size:.55rem;padding:2px 5px;">🚛 Road 36%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 5: Fish -->
+    <div class="eg-commodity-card risk-medium" data-cat="food" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'fish')">
+      <div class="eg-cat-badge eg-cat-food">🐟 Food Commodity</div>
+      <div class="eg-commodity-name">Fish &amp; Seafood</div>
+      <div class="eg-commodity-hs">HS 0301–0307 · Local catch + imports · Fresh, frozen</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Qatar (local)</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:55%;background:var(--green);"></div></div><span class="eg-dep-bar-pct">55%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Norway</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Oman</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:8%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">8%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 82%</span><span class="mode-transport-badge mt-air" style="font-size:.55rem;padding:2px 5px;">✈ Air 18%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 6: Cooking Oils -->
+    <div class="eg-commodity-card risk-high" data-cat="food" data-risk="high" data-hormuz="true" onclick="egSelect(this,'oils')">
+      <div class="eg-cat-badge eg-cat-food">🫙 Food Commodity</div>
+      <div class="eg-commodity-name">Cooking Oils &amp; Ghee</div>
+      <div class="eg-commodity-hs">HS 1507–1515, 1516–1518 · Vegetable &amp; animal ghee</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Malaysia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:44%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">44%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Indonesia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:28%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">28%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Ukraine</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:8%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">8%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill high">🔴 High Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 100%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 7: Rice -->
+    <div class="eg-commodity-card risk-critical" data-cat="food" data-risk="critical" data-hormuz="true" onclick="egSelect(this,'rice')">
+      <div class="eg-cat-badge eg-cat-food">🍚 Food Commodity</div>
+      <div class="eg-commodity-name">Rice</div>
+      <div class="eg-commodity-hs">HS 1006 · Long-grain, Basmati, parboiled · 100% imported</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:62%;background:#e74c3c;"></div></div><span class="eg-dep-bar-pct">62%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Pakistan</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Thailand</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:11%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">11%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Vietnam</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:6%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">6%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill critical">🚨 Critical Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 100%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 8: Sugar -->
+    <div class="eg-commodity-card risk-high" data-cat="food" data-risk="high" data-hormuz="true" onclick="egSelect(this,'sugar')">
+      <div class="eg-cat-badge eg-cat-food">🧂 Food Commodity</div>
+      <div class="eg-commodity-name">Sugar</div>
+      <div class="eg-commodity-hs">HS 1701–1703 · Raw &amp; refined · 100% imported</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Brazil</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:42%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">42%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:24%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">24%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Thailand</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:16%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">16%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Australia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:10%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">10%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill high">🔴 High Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 100%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 9: Tea -->
+    <div class="eg-commodity-card risk-medium" data-cat="food" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'tea')">
+      <div class="eg-cat-badge eg-cat-food">🍵 Food Commodity</div>
+      <div class="eg-commodity-name">Tea</div>
+      <div class="eg-commodity-hs">HS 0902 · Black, green, herbal · 100% imported</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Sri Lanka</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:38%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">38%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:28%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">28%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Kenya</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">China</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:10%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">10%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 96%</span><span class="mode-transport-badge mt-air" style="font-size:.55rem;padding:2px 5px;">✈ Air 4%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 10: Coffee -->
+    <div class="eg-commodity-card risk-low" data-cat="food" data-risk="low" data-hormuz="true" onclick="egSelect(this,'coffee')">
+      <div class="eg-cat-badge eg-cat-food">☕ Food Commodity</div>
+      <div class="eg-commodity-name">Coffee &amp; Products</div>
+      <div class="eg-commodity-hs">HS 0901, 2101 · Green, roasted, extracts · 100% imported</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Brazil</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:32%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">32%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Colombia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Vietnam</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:16%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">16%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Ethiopia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill low">🟢 Low Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 90%</span><span class="mode-transport-badge mt-air" style="font-size:.55rem;padding:2px 5px;">✈ Air 10%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 11: Eggs -->
+    <div class="eg-commodity-card risk-low" data-cat="food" data-risk="low" data-hormuz="false" onclick="egSelect(this,'eggs')">
+      <div class="eg-cat-badge eg-cat-food">🥚 Food Commodity</div>
+      <div class="eg-commodity-name">Table Eggs</div>
+      <div class="eg-commodity-hs">HS 0407 · Shell eggs · Primarily local production post-2017</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Qatar (local)</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:78%;background:var(--green);"></div></div><span class="eg-dep-bar-pct">78%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Turkey</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:10%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">10%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:8%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">8%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Other</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:4%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">4%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill low">🟢 Low Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-road" style="font-size:.55rem;padding:2px 5px;">🚛 Local</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 12: Canned/Frozen -->
+    <div class="eg-commodity-card risk-medium" data-cat="food" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'canned')">
+      <div class="eg-cat-badge eg-cat-food">🥫 Food Commodity</div>
+      <div class="eg-commodity-name">Canned &amp; Frozen Foods</div>
+      <div class="eg-commodity-hs">HS 1601–1605, 2001–2009 · Tinned goods, frozen meals</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Thailand</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:28%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">28%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:22%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">22%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">UAE</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">China</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 92%</span></div>
+      </div>
+    </div>
+
+    <!-- FOOD 13: Flour -->
+    <div class="eg-commodity-card risk-high" data-cat="food" data-risk="high" data-hormuz="true" onclick="egSelect(this,'flour')">
+      <div class="eg-cat-badge eg-cat-food">🌾 Food Commodity</div>
+      <div class="eg-commodity-name">Flour &amp; Wheat</div>
+      <div class="eg-commodity-hs">HS 1001, 1101 · Wheat &amp; wheat flour · Primarily sea via Hormuz</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Australia</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:38%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">38%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">USA</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:24%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">24%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Canada</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Ukraine</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill high">🔴 High Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 100%</span></div>
+      </div>
+    </div>
+
+    <!-- NON-FOOD 1: Transport/Vehicles -->
+    <div class="eg-commodity-card risk-medium" data-cat="nonfood" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'vehicles')">
+      <div class="eg-cat-badge eg-cat-nonfood">🚗 Non-Food Goods</div>
+      <div class="eg-commodity-name">Transport, Vehicles &amp; Spare Parts</div>
+      <div class="eg-commodity-hs">HS 8701–8708, 8714 · Cars, commercial vehicles, parts</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Japan</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:38%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">38%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">South Korea</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:22%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">22%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Germany</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">USA</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 88%</span><span class="mode-transport-badge mt-road" style="font-size:.55rem;padding:2px 5px;">🚛 Road 8%</span></div>
+      </div>
+    </div>
+
+    <!-- NON-FOOD 2: Baby Essentials -->
+    <div class="eg-commodity-card risk-medium" data-cat="nonfood" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'baby')">
+      <div class="eg-cat-badge eg-cat-nonfood">👶 Non-Food Goods</div>
+      <div class="eg-commodity-name">Baby Essentials</div>
+      <div class="eg-commodity-hs">HS 3923, 4818, 6111 · Diapers, baby clothing, accessories</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">China</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:42%;background:#e74c3c;"></div></div><span class="eg-dep-bar-pct">42%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">USA</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:22%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">22%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Germany</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:14%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">14%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 80%</span><span class="mode-transport-badge mt-air" style="font-size:.55rem;padding:2px 5px;">✈ Air 20%</span></div>
+      </div>
+    </div>
+
+    <!-- NON-FOOD 3: Construction -->
+    <div class="eg-commodity-card risk-medium" data-cat="nonfood" data-risk="medium" data-hormuz="true" onclick="egSelect(this,'construction')">
+      <div class="eg-cat-badge eg-cat-nonfood">🏗 Non-Food Goods</div>
+      <div class="eg-commodity-name">Construction Materials</div>
+      <div class="eg-commodity-hs">HS 7213, 7308, 3816, 2523 · Steel rebar, cement, structural</div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">UAE</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:32%;background:#2ab0c4;"></div></div><span class="eg-dep-bar-pct">32%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">China</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:28%;background:#c9a84c;"></div></div><span class="eg-dep-bar-pct">28%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">Turkey</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:18%;background:#9b59b6;"></div></div><span class="eg-dep-bar-pct">18%</span></div>
+      <div class="eg-dep-bar-row"><span class="eg-dep-bar-label">India</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:12%;background:#e67e22;"></div></div><span class="eg-dep-bar-pct">12%</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;">
+        <div class="eg-risk-pill medium">🟡 Medium Risk</div>
+        <div style="display:flex;gap:.3rem;"><span class="mode-transport-badge mt-sea" style="font-size:.55rem;padding:2px 5px;">🚢 Sea 94%</span></div>
+      </div>
+    </div>
+
+  </div><!-- end cards grid -->
+
+  <!-- DETAIL DRILL-DOWN PANEL (shown on card click) -->
+  <div class="eg-detail-panel" id="eg-detail" style="display:none;"></div>
+
+  <!-- ANALYSIS CHARTS ROW -->
+  <div class="eg-analysis-row">
+    <div class="chart-card">
+      <div class="chart-title">Import Dependency by Commodity</div>
+      <div class="chart-title-main">% of Domestic Consumption Imported (2024)</div>
+      <div class="chart-wrap chart-wrap-tall"><canvas id="egDepChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Supply Chain Risk Matrix</div>
+      <div class="chart-title-main">HHI Concentration vs Import Dependency</div>
+      <div class="chart-wrap chart-wrap-tall"><canvas id="egRiskChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="eg-analysis-row">
+    <div class="chart-card">
+      <div class="chart-title">Top Supplier Countries — Essential Goods</div>
+      <div class="chart-title-main">Share of Total Essential Goods Import Value by Origin</div>
+      <div class="chart-wrap chart-wrap-tall"><canvas id="egCountryChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Transport Mode — Essential Goods Imports</div>
+      <div class="chart-title-main">Mode Split for Price-Controlled Commodities</div>
+      <div class="chart-wrap chart-wrap-tall"><canvas id="egModeChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="eg-full-row">
+    <div class="chart-card">
+      <div class="chart-title">Geopolitical Shock Impact Assessment</div>
+      <div class="chart-title-main">Estimated Supply Disruption Risk per Commodity — Hormuz Closure Scenario</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.6rem;margin-top:.5rem;" id="eg-shock-grid">
+        <!-- populated by JS -->
+      </div>
+      <div style="margin-top:1rem;padding:.8rem;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.2);font-size:.72rem;color:var(--text-dim);line-height:1.6;">
+        <strong style="color:#ff6b6b;">Hormuz Closure Scenario:</strong> A 30-day closure would disrupt ~97% of essential sea-borne imports. 
+        Items with GCC land routes (Jordan/Saudi Arabia road corridors) or significant local production have partial resilience. 
+        Strategic stockpile reserves held by MOCI estimated at <strong style="color:var(--gold);">3–6 months</strong> for staples (rice, flour, sugar, cooking oil). 
+        Perishables (vegetables, fresh fish, chilled meat) have <strong style="color:#e74c3c;">less than 2-week buffer</strong>.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+</main>
+
+<script>
+const QAR_RATE=3.64;
+let currentCurrency='USD';
+const chartsInitialized={};
+
+// CURRENCY
+function setCurrency(cur){
+  currentCurrency=cur;
+  document.getElementById('btn-usd').classList.toggle('active',cur==='USD');
+  document.getElementById('btn-qar').classList.toggle('active',cur==='QAR');
+  const lbl=cur==='USD'?'USD Billion':'QAR Billion';
+  document.querySelectorAll('[id^="currency-label"]').forEach(el=>el.textContent=lbl);
+  const r=cur==='QAR'?QAR_RATE:1, s=cur==='USD'?'$':'QAR ';
+  const fmt=(v,d=1)=>s+(v*r).toFixed(d)+'B';
+  document.getElementById('kpi-exp').textContent=fmt(84.2);
+  document.getElementById('kpi-imp').textContent=fmt(38.6);
+  document.getElementById('kpi-bal').textContent='+'+fmt(45.6);
+  document.getElementById('bal-big').textContent='+'+fmt(45.6);
+  document.getElementById('dep-cn').textContent='+'+fmt(8.1);
+  document.getElementById('dep-jp').textContent='+'+fmt(11.2);
+  document.getElementById('dep-kr').textContent='+'+fmt(6.8);
+  document.getElementById('dep-in').textContent='-'+fmt(0.5);
+  document.getElementById('dep-uk').textContent='+'+fmt(0.4);
+  document.getElementById('tr-sea').textContent=fmt(78.4);
+  document.getElementById('tr-air').textContent=fmt(3.8);
+  document.getElementById('tr-road').textContent=fmt(1.6);
+  document.getElementById('serv-exp').textContent=fmt(14.8);
+  document.getElementById('serv-imp').textContent=fmt(22.4);
+  document.getElementById('serv-bal').textContent='-'+fmt(7.6);
+  [[4.2,'se1'],[3.6,'se2'],[2.1,'se3'],[1.8,'se4'],[1.4,'se5'],[0.9,'se6']].forEach(([v,id])=>{const el=document.getElementById(id);if(el)el.textContent=fmt(v);});
+  if(chartsInitialized.dashboard) redrawDashboard(r,s);
+  if(chartsInitialized.transport) redrawTransport(r,s);
+  if(chartsInitialized.services) redrawServices(r,s);
+}
+
+// TABS
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  const r=currentCurrency==='QAR'?QAR_RATE:1, s=currentCurrency==='USD'?'$':'QAR ';
+  if(name==='dashboard'&&!chartsInitialized.dashboard){initDashboard(r,s);chartsInitialized.dashboard=true;}
+  if(name==='transport'&&!chartsInitialized.transport){initTransport(r,s);chartsInitialized.transport=true;}
+  if(name==='services'&&!chartsInitialized.services){initServices(r,s);chartsInitialized.services=true;}
+  if(name==='essential'&&!chartsInitialized.essential){initEssential();chartsInitialized.essential=true;}
+}
+
+function toggleFilter(btn){btn.closest('.filter-toggle-group').querySelectorAll('.filter-toggle').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+
+// HS LEVEL
+const HS_DATA={
+  2:[['27','Mineral Fuels & LNG'],['39','Plastics'],['76','Aluminium'],['31','Fertilisers'],['28','Chemicals'],['84','Machinery'],['85','Electrical Equip'],['87','Vehicles'],['72','Steel & Iron'],['30','Pharmaceuticals']],
+  4:[['2711','Petroleum gases'],['2709','Crude oil'],['3901','Polyethylene'],['7601','Unwrought aluminium'],['3102','Nitrogen fertiliser'],['2814','Ammonia'],['8471','Computers'],['8703','Motor vehicles'],['7208','Flat-rolled steel'],['3004','Medicaments']],
+  6:[['271111','LNG — natural gas, liquefied'],['271121','Natural gas in gaseous state'],['270900','Petroleum oils, crude'],['390110','Linear polyethylene'],['760110','Aluminium, not alloyed'],['310210','Urea, anhydrous'],['281410','Anhydrous ammonia'],['847130','Laptop computers'],['870322','Motor vehicles 1000-1500cc'],['720839','Flat-rolled iron/steel']]
+};
+let currentHSLevel=6;
+function setHSLevel(btn,level){
+  btn.closest('.hs-level-group').querySelectorAll('.hs-level-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentHSLevel=level;
+  const notes={2:'HS2 (chapter, broadest)',4:'HS4 (heading)',6:'HS6 (subheading, max granularity)'};
+  document.getElementById('hs-level-note').textContent=notes[level];
+  document.getElementById('hs-selected').innerHTML='';
+  document.getElementById('hs-input').value='';
+  document.getElementById('hs-dropdown').style.display='none';
+}
+function searchHS(val){
+  const dd=document.getElementById('hs-dropdown');
+  if(!val){dd.style.display='none';return;}
+  const data=HS_DATA[currentHSLevel]||HS_DATA[6];
+  const matches=data.filter(h=>h[0].includes(val)||h[1].toLowerCase().includes(val.toLowerCase()));
+  dd.innerHTML=matches.map(h=>`<div class="hs-item" onclick="addHS('${h[0]}','${h[1]}')">${h[0]} — ${h[1]}</div>`).join('');
+  dd.style.display=matches.length?'block':'none';
+}
+function addHS(code,name){
+  const sel=document.getElementById('hs-selected');
+  if(!document.querySelector(`[data-hs="${code}"]`)){
+    const tag=document.createElement('span');
+    tag.className='hs-tag';tag.dataset.hs=code;
+    tag.innerHTML=`${code} — ${name.split(' ').slice(0,2).join(' ')} \u2715`;
+    tag.onclick=()=>tag.remove();sel.appendChild(tag);
+  }
+  document.getElementById('hs-input').value='';
+  document.getElementById('hs-dropdown').style.display='none';
+}
+
+// CLOCK
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleString('en-US',{timeZone:'Asia/Qatar',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' AST';}
+setInterval(updateClock,1000);updateClock();
+
+// CHART UTILS
+const NAVY='#0a1628',GOLD='#c9a84c',TEAL='#2ab0c4',GREEN='#1abc9c',RED='#e74c3c',PURPLE='#9b59b6',ORANGE='#e67e22',BLUE='#3498db',DIM='#8ea3c0';
+Chart.defaults.color=DIM;
+Chart.defaults.font.family="'IBM Plex Mono', monospace";
+Chart.defaults.font.size=10;
+const grid={color:'rgba(255,255,255,0.05)',borderDash:[3,3]};
+const tip={backgroundColor:'rgba(10,22,40,0.95)',borderColor:GOLD,borderWidth:1,titleColor:GOLD,bodyColor:'#f8f6f0',padding:10};
+const leg=(pos='bottom')=>({position:pos,labels:{color:DIM,font:{size:9},padding:8}});
+function opts(yfmt){
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:tip},
+    scales:{y:{grid,ticks:{callback:yfmt||(v=>'$'+v+'B')},border:{color:'transparent'}},x:{grid:{display:false},border:{color:'rgba(255,255,255,0.1)'}}}};
+}
+function lineOpts(yfmt){return{...opts(yfmt),plugins:{legend:leg('top'),tooltip:tip}};}
+
+// DASHBOARD
+let hC,bC,cC,pC,iC,geC,giC;
+function initDashboard(r,s){
+  const Y=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024'];
+  const E=[77.3,57.3,62.1,72.8,72.6,57.3,74.3,110.2,78.5,84.2].map(v=>+(v*r).toFixed(1));
+  const I=[28.4,26.1,23.8,26.5,28.1,27.4,29.2,35.1,39.4,38.6].map(v=>+(v*r).toFixed(1));
+  hC=new Chart(document.getElementById('histChart'),{type:'line',data:{labels:Y,datasets:[
+    {label:'Exports',data:E,borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:GOLD},
+    {label:'Imports',data:I,borderColor:TEAL,backgroundColor:'rgba(42,176,196,0.06)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:TEAL}
+  ]},options:lineOpts(v=>s+v+'B')});
+  const bY=['2019','2020','2021','2022','2023','2024'],bD=[44.5,29.9,45.1,75.1,39.1,45.6].map(v=>+(v*r).toFixed(1));
+  bC=new Chart(document.getElementById('balanceChart'),{type:'bar',data:{labels:bY,datasets:[{data:bD,backgroundColor:bD.map(v=>v>=0?'rgba(26,188,156,0.7)':'rgba(231,76,60,0.7)'),borderColor:bD.map(v=>v>=0?GREEN:RED),borderWidth:1,borderRadius:2}]},options:opts(v=>s+v+'B')});
+  cC=new Chart(document.getElementById('composChart'),{type:'bar',data:{labels:['HS27 Fuels','HS39 Plastics','HS76 Aluminium','HS31 Fertilisers','HS28 Chemicals','HS84 Machinery','Other'],datasets:[{data:[62.4,6.8,4.2,3.1,2.8,0.9,4.0].map(v=>+(v*r).toFixed(1)),backgroundColor:[GOLD,TEAL,PURPLE,GREEN,ORANGE,RED,DIM].map(c=>c+'bb'),borderRadius:2}]},options:{...opts(v=>s+v+'B'),indexAxis:'y'}});
+  pC=new Chart(document.getElementById('partnerChart'),{type:'doughnut',data:{labels:['China','Japan','S.Korea','India','UK','Germany','Other'],datasets:[{data:[18.2,17.1,12.4,11.8,5.2,4.1,31.2],backgroundColor:[TEAL,GOLD,PURPLE,ORANGE,RED,BLUE,'#5d6d7e'].map(c=>c+'cc'),borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:leg(),tooltip:tip}}});
+  iC=new Chart(document.getElementById('importChart'),{type:'doughnut',data:{labels:['China','USA','India','UAE','Germany','UK','Other'],datasets:[{data:[15.2,10.8,9.4,7.6,6.2,5.1,45.7],backgroundColor:[TEAL,BLUE,ORANGE,GOLD,'#2ecc71',PURPLE,'#5d6d7e'].map(c=>c+'cc'),borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:leg(),tooltip:tip}}});
+  geC=new Chart(document.getElementById('goodsServExp'),{type:'pie',data:{labels:['Goods','Services'],datasets:[{data:[85.1,14.9],backgroundColor:[GOLD+'cc',TEAL+'cc'],borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:leg(),tooltip:tip}}});
+  giC=new Chart(document.getElementById('goodsServImp'),{type:'pie',data:{labels:['Goods','Services'],datasets:[{data:[63.3,36.7],backgroundColor:[ORANGE+'cc',PURPLE+'cc'],borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:leg(),tooltip:tip}}});
+}
+function redrawDashboard(r,s){
+  if(!hC)return;
+  hC.data.datasets[0].data=[77.3,57.3,62.1,72.8,72.6,57.3,74.3,110.2,78.5,84.2].map(v=>+(v*r).toFixed(1));
+  hC.data.datasets[1].data=[28.4,26.1,23.8,26.5,28.1,27.4,29.2,35.1,39.4,38.6].map(v=>+(v*r).toFixed(1));
+  hC.options.scales.y.ticks.callback=v=>s+v+'B';hC.update();
+  const bd=[44.5,29.9,45.1,75.1,39.1,45.6].map(v=>+(v*r).toFixed(1));
+  bC.data.datasets[0].data=bd;bC.options.scales.y.ticks.callback=v=>s+v+'B';bC.update();
+  cC.data.datasets[0].data=[62.4,6.8,4.2,3.1,2.8,0.9,4.0].map(v=>+(v*r).toFixed(1));
+  cC.options.scales.x.ticks.callback=v=>s+v+'B';cC.update();
+}
+
+// TRANSPORT
+let mbC,mpC,stC,acC,rC,mmC;
+function initTransport(r,s){
+  mbC=new Chart(document.getElementById('modeBarChart'),{type:'bar',data:{labels:['Sea','Air','Road','Rail','Postal','Other'],datasets:[
+    {label:'Exports',data:[78.4,3.8,1.6,0.1,0.05,0.25].map(v=>+(v*r).toFixed(2)),backgroundColor:GOLD+'aa',borderRadius:2},
+    {label:'Imports',data:[28.4,6.2,2.8,0.4,0.3,0.5].map(v=>+(v*r).toFixed(2)),backgroundColor:TEAL+'77',borderRadius:2}
+  ]},options:lineOpts(v=>s+v+'B')});
+  mpC=new Chart(document.getElementById('modePieChart'),{type:'doughnut',data:{labels:['Sea 93.1%','Air 4.5%','Road 1.9%','Rail 0.1%','Other 0.4%'],datasets:[{data:[78.4,3.8,1.6,0.1,0.3],backgroundColor:[TEAL+'cc',BLUE+'cc',ORANGE+'cc',PURPLE+'cc','#5d6d7ecc'],borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:leg(),tooltip:tip}}});
+  const Y=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024'];
+  stC=new Chart(document.getElementById('seaTrendChart'),{type:'line',data:{labels:Y,datasets:[
+    {label:'Sea Exports',data:[71.2,52.4,57.1,67.8,67.4,52.8,68.2,103.1,73.2,78.4].map(v=>+(v*r).toFixed(1)),borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:GOLD},
+    {label:'Sea Imports',data:[20.1,18.4,16.9,19.2,20.4,19.8,21.1,25.8,29.4,28.4].map(v=>+(v*r).toFixed(1)),borderColor:TEAL,backgroundColor:'rgba(42,176,196,0.06)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:TEAL}
+  ]},options:lineOpts(v=>s+v+'B')});
+  acC=new Chart(document.getElementById('airComChart'),{type:'bar',data:{labels:['HS84 Machinery','HS85 Electronics','HS30 Pharma','HS71 Gems','HS90 Optics','HS39 Plastics'],datasets:[{data:[0.82,0.74,0.51,0.44,0.38,0.29].map(v=>+(v*r).toFixed(2)),backgroundColor:[BLUE,TEAL,GREEN,GOLD,PURPLE,ORANGE].map(c=>c+'bb'),borderRadius:2}]},options:{...opts(v=>s+v+'B'),indexAxis:'y'}});
+  rC=new Chart(document.getElementById('roadChart'),{type:'bar',data:{labels:['Saudi Arabia','UAE','Bahrain','Kuwait','Oman'],datasets:[
+    {label:'Road Exports',data:[0.82,0.41,0.18,0.09,0.1].map(v=>+(v*r).toFixed(2)),backgroundColor:GOLD+'aa',borderRadius:2},
+    {label:'Road Imports',data:[1.24,0.86,0.34,0.07,0.09].map(v=>+(v*r).toFixed(2)),backgroundColor:TEAL+'77',borderRadius:2}
+  ]},options:lineOpts(v=>s+v+'B')});
+  mmC=new Chart(document.getElementById('modeMixChart'),{type:'bar',data:{labels:['2015','2017','2019','2021','2022','2023','2024'],datasets:[
+    {label:'Sea',data:[92.1,92.8,93.0,93.2,93.4,93.0,93.1],backgroundColor:TEAL+'99',stack:'a'},
+    {label:'Air',data:[4.8,4.5,4.4,4.3,4.2,4.4,4.5],backgroundColor:BLUE+'99',stack:'a'},
+    {label:'Road',data:[2.5,2.1,2.1,2.0,1.9,2.1,1.9],backgroundColor:ORANGE+'99',stack:'a'},
+    {label:'Other',data:[0.6,0.6,0.5,0.5,0.5,0.5,0.5],backgroundColor:PURPLE+'77',stack:'a'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:leg('top'),tooltip:tip},scales:{x:{stacked:true,grid:{display:false},border:{color:'rgba(255,255,255,0.1)'}},y:{stacked:true,grid,ticks:{callback:v=>v+'%'},border:{color:'transparent'}}}}});
+}
+function redrawTransport(r,s){
+  if(!mbC)return;
+  mbC.data.datasets[0].data=[78.4,3.8,1.6,0.1,0.05,0.25].map(v=>+(v*r).toFixed(2));
+  mbC.data.datasets[1].data=[28.4,6.2,2.8,0.4,0.3,0.5].map(v=>+(v*r).toFixed(2));
+  mbC.options.scales.y.ticks.callback=v=>s+v+'B';mbC.update();
+  stC.data.datasets[0].data=[71.2,52.4,57.1,67.8,67.4,52.8,68.2,103.1,73.2,78.4].map(v=>+(v*r).toFixed(1));
+  stC.data.datasets[1].data=[20.1,18.4,16.9,19.2,20.4,19.8,21.1,25.8,29.4,28.4].map(v=>+(v*r).toFixed(1));
+  stC.options.scales.y.ticks.callback=v=>s+v+'B';stC.update();
+  acC.data.datasets[0].data=[0.82,0.74,0.51,0.44,0.38,0.29].map(v=>+(v*r).toFixed(2));
+  acC.options.scales.x.ticks.callback=v=>s+v+'B';acC.update();
+  rC.data.datasets[0].data=[0.82,0.41,0.18,0.09,0.1].map(v=>+(v*r).toFixed(2));
+  rC.data.datasets[1].data=[1.24,0.86,0.34,0.07,0.09].map(v=>+(v*r).toFixed(2));
+  rC.options.scales.y.ticks.callback=v=>s+v+'B';rC.update();
+}
+
+// SERVICES
+let scC,smC,shC;
+function initServices(r,s){
+  scC=new Chart(document.getElementById('servCatChart'),{type:'bar',data:{labels:['Transport','Travel & Tourism','Financial Svcs','Business Svcs','ICT & Telecom','Construction','Other'],datasets:[
+    {label:'Exports',data:[4.2,3.6,2.1,1.8,1.4,0.9,0.8].map(v=>+(v*r).toFixed(1)),backgroundColor:GOLD+'bb',borderRadius:2},
+    {label:'Imports',data:[6.8,2.2,1.4,5.2,2.8,3.1,0.9].map(v=>+(v*r).toFixed(1)),backgroundColor:TEAL+'77',borderRadius:2}
+  ]},options:{...lineOpts(v=>s+v+'B'),indexAxis:'y'}});
+  smC=new Chart(document.getElementById('modeChart'),{type:'doughnut',data:{labels:['Mode 1: Cross-border','Mode 2: Consumption Abroad','Mode 3: Commercial Presence','Mode 4: Natural Persons'],datasets:[{data:[38,24,28,10],backgroundColor:[TEAL+'cc',GOLD+'cc',PURPLE+'cc',GREEN+'cc'],borderColor:NAVY,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:leg(),tooltip:tip}}});
+  shC=new Chart(document.getElementById('servHistChart'),{type:'line',data:{labels:['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024'],datasets:[
+    {label:'Services Exports',data:[7.2,6.8,7.4,9.1,10.2,6.8,9.4,12.8,13.3,14.8].map(v=>+(v*r).toFixed(1)),borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.08)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:GOLD},
+    {label:'Services Imports',data:[18.4,17.1,16.8,19.4,21.2,17.8,19.1,22.4,21.8,22.4].map(v=>+(v*r).toFixed(1)),borderColor:TEAL,backgroundColor:'rgba(42,176,196,0.06)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:TEAL}
+  ]},options:lineOpts(v=>s+v+'B')});
+}
+function redrawServices(r,s){
+  if(!scC)return;
+  scC.data.datasets[0].data=[4.2,3.6,2.1,1.8,1.4,0.9,0.8].map(v=>+(v*r).toFixed(1));
+  scC.data.datasets[1].data=[6.8,2.2,1.4,5.2,2.8,3.1,0.9].map(v=>+(v*r).toFixed(1));
+  scC.options.scales.x.ticks.callback=v=>s+v+'B';scC.update();
+  shC.data.datasets[0].data=[7.2,6.8,7.4,9.1,10.2,6.8,9.4,12.8,13.3,14.8].map(v=>+(v*r).toFixed(1));
+  shC.data.datasets[1].data=[18.4,17.1,16.8,19.4,21.2,17.8,19.1,22.4,21.8,22.4].map(v=>+(v*r).toFixed(1));
+  shC.options.scales.y.ticks.callback=v=>s+v+'B';shC.update();
+}
+
+// Per-country bilateral trade data (Qatar imports FROM / exports TO, $B, 2024 est.)
+const COUNTRY_DATA={
+  world:{
+    name:'World (All Partners)',
+    exports:[62.4,6.8,4.2,3.1,2.8,0.9,4.0],
+    exportLabels:['HS27 Fuels','HS39 Plastics','HS76 Aluminium','HS31 Fertilisers','HS28 Chemicals','HS84 Machinery','Other'],
+    exportPartners:['China','Japan','S.Korea','India','UK','Germany','Other'],
+    exportPartnerVals:[18.2,17.1,12.4,11.8,5.2,4.1,31.2],
+    importPartners:['China','USA','India','UAE','Germany','UK','Other'],
+    importPartnerVals:[15.2,10.8,9.4,7.6,6.2,5.1,45.7],
+    trend:{exp:[48.2,37.4,41.8,54.2,60.1,40.2,52.8,71.4,78.2,84.2],imp:[28.4,27.8,28.6,31.2,29.8,25.4,28.1,34.8,37.2,38.6]},
+    balance:[19.8,9.6,13.2,23.0,30.3,14.8,24.7,36.6,41.0,45.6],
+    kpi:{exp:84.2,imp:38.6,bal:45.6,partners:187,hhi:0.34}
+  },
+  jp:{
+    name:'Japan',
+    exports:[11.2,0.0,0.0,0.0,0.0,0.0,0.1],
+    exportLabels:['LNG (HS271111)','Ethylene (HS2901)','Aluminium','Naphtha','Chemicals','Other','—'],
+    exportPartners:['LNG','Naphtha','Ethylene','Chemicals','Aluminium','Plastics','Other'],
+    exportPartnerVals:[78.4,8.2,4.1,3.8,2.9,1.6,1.0],
+    importPartners:['Vehicles (HS87)','Machinery (HS84)','Electronics (HS85)','Steel (HS72)','Chemicals','Medical','Other'],
+    importPartnerVals:[38.2,22.4,14.6,9.8,6.2,4.4,4.4],
+    trend:{exp:[7.8,6.2,6.8,8.4,9.1,7.2,9.8,12.4,11.8,11.2],imp:[0.5,0.6,0.7,0.8,0.9,0.8,1.0,1.1,1.0,1.0]},
+    balance:[7.3,5.6,6.1,7.6,8.2,6.4,8.8,11.3,10.8,10.2],
+    kpi:{exp:11.2,imp:1.0,bal:10.2,partners:1,hhi:0.68}
+  },
+  cn:{
+    name:'China',
+    exports:[9.8,1.2,0.8,0.4,0.2,0.1,0.1],
+    exportLabels:['LNG (HS271111)','Polyethylene','Aluminium','Chemicals','Fertilisers','Plastics','Other'],
+    exportPartners:['LNG','Polyethylene','Aluminium','Chemicals','Fertilisers','Plastics','Other'],
+    exportPartnerVals:[70.2,10.8,7.4,4.2,3.8,2.4,1.2],
+    importPartners:['Machinery (HS84)','Electronics (HS85)','Steel (HS72)','Vehicles','Textiles','Chemicals','Other'],
+    importPartnerVals:[28.4,24.2,16.8,10.2,8.4,6.2,5.8],
+    trend:{exp:[4.2,3.8,5.6,7.4,8.8,5.4,7.2,10.8,9.4,9.8],imp:[3.2,3.4,3.8,4.2,4.8,4.4,5.0,6.2,5.8,5.9]},
+    balance:[1.0,0.4,1.8,3.2,4.0,1.0,2.2,4.6,3.6,3.9],
+    kpi:{exp:9.8,imp:5.9,bal:3.9,partners:1,hhi:0.52}
+  },
+  kr:{
+    name:'South Korea',
+    exports:[7.8,0.8,0.4,0.2,0.1,0.0,0.1],
+    exportLabels:['LNG (HS271111)','Naphtha','Ethylene','Aluminium','Chemicals','Other','—'],
+    exportPartners:['LNG','Naphtha','Ethylene','Aluminium','Chemicals','Plastics','Other'],
+    exportPartnerVals:[74.8,11.2,6.4,3.8,2.4,0.8,0.6],
+    importPartners:['Vehicles (HS87)','Electronics (HS85)','Machinery','Steel','Ships','Chemicals','Other'],
+    importPartnerVals:[36.4,24.8,16.2,10.4,5.8,4.2,2.2],
+    trend:{exp:[4.8,4.2,4.8,6.2,7.1,5.8,7.4,9.2,8.4,7.8],imp:[0.4,0.5,0.5,0.6,0.7,0.7,0.8,0.9,0.8,0.7]},
+    balance:[4.4,3.7,4.3,5.6,6.4,5.1,6.6,8.3,7.6,7.1],
+    kpi:{exp:7.8,imp:0.7,bal:7.1,partners:1,hhi:0.60}
+  },
+  in:{
+    name:'India',
+    exports:[4.8,0.8,0.6,0.4,0.2,0.1,0.1],
+    exportLabels:['LNG (HS271111)','LPG','Chemicals','Aluminium','Fertilisers','Plastics','Other'],
+    exportPartners:['LNG','LPG','Chemicals','Aluminium','Fertilisers','Plastics','Other'],
+    exportPartnerVals:[61.2,14.8,8.4,6.2,4.8,2.8,1.8],
+    importPartners:['Vehicles','Machinery','Pharma','Textiles','Rice','Chemicals','Other'],
+    importPartnerVals:[22.4,18.8,14.2,12.6,11.4,10.2,10.4],
+    trend:{exp:[2.4,2.2,2.8,3.4,4.1,3.6,4.2,5.8,5.2,4.8],imp:[1.2,1.4,1.6,1.8,2.0,1.8,2.0,2.4,2.2,2.1]},
+    balance:[1.2,0.8,1.2,1.6,2.1,1.8,2.2,3.4,3.0,2.7],
+    kpi:{exp:4.8,imp:2.1,bal:2.7,partners:1,hhi:0.41}
+  },
+  de:{
+    name:'Germany',
+    exports:[1.8,0.2,0.1,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartnerVals:[62.8,16.2,10.4,7.2,3.4,0,0],
+    importPartners:['Machinery (HS84)','Vehicles','Chemicals','Pharma','Electrical','Med devices','Other'],
+    importPartnerVals:[28.8,24.4,16.2,12.8,8.4,6.2,3.2],
+    trend:{exp:[1.2,1.0,1.2,1.6,1.8,1.4,1.8,2.2,2.0,1.8],imp:[0.4,0.5,0.6,0.7,0.8,0.7,0.8,1.0,0.9,0.8]},
+    balance:[0.8,0.5,0.6,0.9,1.0,0.7,1.0,1.2,1.1,1.0],
+    kpi:{exp:1.8,imp:0.8,bal:1.0,partners:1,hhi:0.45}
+  },
+  uk:{
+    name:'United Kingdom',
+    exports:[1.4,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartnerVals:[64.8,14.8,10.2,6.8,3.4,0,0],
+    importPartners:['Machinery','Pharma','Vehicles','Financial Svcs','Chemicals','Aerospace','Other'],
+    importPartnerVals:[24.2,22.4,18.8,12.4,8.6,7.2,6.4],
+    trend:{exp:[0.8,0.6,0.8,1.0,1.2,1.0,1.2,1.6,1.4,1.4],imp:[0.5,0.5,0.6,0.6,0.7,0.6,0.7,0.8,0.7,0.7]},
+    balance:[0.3,0.1,0.2,0.4,0.5,0.4,0.5,0.8,0.7,0.7],
+    kpi:{exp:1.4,imp:0.7,bal:0.7,partners:1,hhi:0.47}
+  },
+  us:{
+    name:'United States',
+    exports:[2.8,0.4,0.2,0.1,0.1,0.1,0.1],
+    exportLabels:['LNG','Chemicals','Aluminium','Plastics','Fertilisers','Other','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Plastics','Fertilisers','Other','—'],
+    exportPartnerVals:[58.4,14.2,10.8,7.6,5.4,3.6,0],
+    importPartners:['Machinery','Aerospace','Vehicles','Chemicals','Medical','Electronics','Other'],
+    importPartnerVals:[24.8,20.4,16.2,14.8,10.2,8.4,5.2],
+    trend:{exp:[1.2,0.8,1.4,2.0,2.6,1.8,2.2,3.4,3.0,2.8],imp:[0.8,0.8,0.9,1.0,1.1,1.0,1.2,1.4,1.2,1.1]},
+    balance:[0.4,0.0,0.5,1.0,1.5,0.8,1.0,2.0,1.8,1.7],
+    kpi:{exp:2.8,imp:1.1,bal:1.7,partners:1,hhi:0.39}
+  },
+  fr:{
+    name:'France',
+    exports:[1.6,0.1,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[72.4,14.8,8.2,4.6,0,0,0],
+    importPartners:['Aerospace (HS88)','Pharma','Luxury goods','Machinery','Vehicles','Food','Other'],
+    importPartnerVals:[28.4,22.6,16.4,12.8,8.2,6.2,5.4],
+    trend:{exp:[0.8,0.6,0.8,1.0,1.4,1.2,1.4,1.8,1.6,1.6],imp:[0.4,0.4,0.5,0.5,0.6,0.6,0.7,0.8,0.7,0.6]},
+    balance:[0.4,0.2,0.3,0.5,0.8,0.6,0.7,1.0,0.9,1.0],
+    kpi:{exp:1.6,imp:0.6,bal:1.0,partners:1,hhi:0.55}
+  },
+  sa:{
+    name:'Saudi Arabia',
+    exports:[0.8,0.4,0.2,0.2,0.1,0.1,0.1],
+    exportLabels:['Chemicals','Aluminium','Plastics','LPG','Fertilisers','Other','—'],
+    exportPartners:['Chemicals','Aluminium','Plastics','LPG','Fertilisers','Other','—'],
+    exportPartnerVals:[28.4,22.6,18.4,14.2,10.8,5.6,0],
+    importPartners:['Food & Livestock','Chemicals','Construction','Vehicles','Plastics','Pharma','Other'],
+    importPartnerVals:[32.4,18.8,14.6,12.2,9.8,6.8,5.4],
+    trend:{exp:[0.6,0.4,0.0,0.2,0.4,0.6,0.8,1.0,0.9,0.8],imp:[1.2,1.0,0.0,0.8,1.4,1.6,1.8,2.2,2.0,1.9]},
+    balance:[-0.6,-0.6,0.0,-0.6,-1.0,-1.0,-1.0,-1.2,-1.1,-1.1],
+    kpi:{exp:0.8,imp:1.9,bal:-1.1,partners:1,hhi:0.18}
+  },
+  ae:{
+    name:'UAE',
+    exports:[2.4,0.8,0.4,0.2,0.2,0.1,0.1],
+    exportLabels:['LNG','Chemicals','Aluminium','LPG','Plastics','Other','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','LPG','Plastics','Other','—'],
+    exportPartnerVals:[44.2,18.4,14.8,10.2,8.4,4.0,0],
+    importPartners:['Re-exports mixed','Machinery','Food','Chemicals','Construction','Pharma','Other'],
+    importPartnerVals:[28.4,20.2,16.8,12.4,10.2,6.8,5.2],
+    trend:{exp:[1.2,1.0,1.2,1.8,2.2,2.0,2.4,2.8,2.6,2.4],imp:[1.4,1.6,1.8,2.0,2.2,2.0,2.4,2.8,2.6,2.4]},
+    balance:[-0.2,-0.6,-0.6,-0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    kpi:{exp:2.4,imp:2.4,bal:0.0,partners:1,hhi:0.24}
+  },
+  kw:{
+    name:'Kuwait',
+    exports:[0.6,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LPG','Aluminium','Plastics','Other','—','—'],
+    exportPartners:['Chemicals','LPG','Aluminium','Plastics','Other','—','—'],
+    exportPartnerVals:[38.4,24.2,18.8,12.2,6.4,0,0],
+    importPartners:['Food','Construction','Vehicles','Machinery','Chemicals','Consumer goods','Other'],
+    importPartnerVals:[30.4,22.8,16.4,12.8,8.6,5.8,3.2],
+    trend:{exp:[0.4,0.3,0.4,0.5,0.6,0.5,0.6,0.7,0.6,0.6],imp:[0.2,0.2,0.2,0.3,0.3,0.3,0.4,0.4,0.4,0.4]},
+    balance:[0.2,0.1,0.2,0.2,0.3,0.2,0.2,0.3,0.2,0.2],
+    kpi:{exp:0.6,imp:0.4,bal:0.2,partners:1,hhi:0.22}
+  },
+  om:{
+    name:'Oman',
+    exports:[0.4,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartners:['LPG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[42.4,28.8,18.4,10.4,0,0,0],
+    importPartners:['Food','Livestock','Construction','Vehicles','Consumer goods','Pharma','Other'],
+    importPartnerVals:[34.2,22.4,16.8,12.2,7.8,4.6,2.0],
+    trend:{exp:[0.2,0.2,0.3,0.3,0.4,0.3,0.4,0.4,0.4,0.4],imp:[0.1,0.1,0.2,0.2,0.2,0.2,0.3,0.3,0.3,0.3]},
+    balance:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.1,0.1,0.1],
+    kpi:{exp:0.4,imp:0.3,bal:0.1,partners:1,hhi:0.28}
+  },
+  bh:{
+    name:'Bahrain',
+    exports:[0.3,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LPG','Aluminium','Other','—','—','—'],
+    exportPartners:['Chemicals','LPG','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[38.4,32.2,20.8,8.6,0,0,0],
+    importPartners:['Aluminium products','Food','Chemicals','Vehicles','Construction','Consumer goods','Other'],
+    importPartnerVals:[28.4,24.2,16.8,12.4,8.6,6.2,3.4],
+    trend:{exp:[0.2,0.1,0.2,0.2,0.3,0.2,0.3,0.3,0.3,0.3],imp:[0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.2]},
+    balance:[0.1,0.0,0.1,0.1,0.1,0.0,0.1,0.1,0.1,0.1],
+    kpi:{exp:0.3,imp:0.2,bal:0.1,partners:1,hhi:0.24}
+  },
+  // East Asia
+  tw:{
+    name:'Taiwan',
+    exports:[3.8,0.2,0.1,0.1,0.0,0.0,0.1],
+    exportLabels:['LNG','Naphtha','Ethylene','Chemicals','Plastics','Other','—'],
+    exportPartners:['LNG','Naphtha','Ethylene','Chemicals','Plastics','Other','—'],
+    exportPartnerVals:[72.4,12.8,7.2,4.2,2.4,1.0,0],
+    importPartners:['Semiconductors (HS85)','Machinery','Electronics','Plastics','Chemicals','Steel','Other'],
+    importPartnerVals:[38.4,24.2,16.8,9.4,6.2,3.8,1.2],
+    trend:{exp:[2.2,1.8,2.4,3.0,3.6,2.8,3.4,4.2,4.0,3.8],imp:[0.3,0.3,0.4,0.4,0.5,0.4,0.5,0.6,0.6,0.6]},
+    balance:[1.9,1.5,2.0,2.6,3.1,2.4,2.9,3.6,3.4,3.2],
+    kpi:{exp:3.8,imp:0.6,bal:3.2,partners:1,hhi:0.57}
+  },
+  sg:{
+    name:'Singapore',
+    exports:[2.4,0.4,0.2,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','Chemicals','Naphtha','Aluminium','LPG','Other','—'],
+    exportPartners:['LNG','Chemicals','Naphtha','Aluminium','LPG','Other','—'],
+    exportPartnerVals:[58.4,16.8,12.4,6.8,3.8,1.8,0],
+    importPartners:['Machinery','Electronics','Pharma','Refined petroleum','Chemicals','Financial svcs','Other'],
+    importPartnerVals:[26.4,22.8,16.2,12.4,10.2,8.6,3.4],
+    trend:{exp:[1.4,1.2,1.6,2.0,2.4,1.8,2.2,2.8,2.6,2.4],imp:[0.5,0.5,0.6,0.7,0.8,0.7,0.8,1.0,0.9,0.9]},
+    balance:[0.9,0.7,1.0,1.3,1.6,1.1,1.4,1.8,1.7,1.5],
+    kpi:{exp:2.4,imp:0.9,bal:1.5,partners:1,hhi:0.40}
+  },
+  hk:{
+    name:'Hong Kong',
+    exports:[1.2,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Plastics','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Plastics','Other','—','—','—'],
+    exportPartnerVals:[68.4,18.2,8.6,4.8,0,0,0],
+    importPartners:['Electronics','Machinery','Luxury goods','Jewellery','Pharma','Chemicals','Other'],
+    importPartnerVals:[34.2,22.4,16.8,12.4,8.2,4.2,1.8],
+    trend:{exp:[0.6,0.5,0.7,0.9,1.1,0.9,1.1,1.4,1.3,1.2],imp:[0.2,0.2,0.2,0.3,0.3,0.3,0.3,0.4,0.4,0.4]},
+    balance:[0.4,0.3,0.5,0.6,0.8,0.6,0.8,1.0,0.9,0.8],
+    kpi:{exp:1.2,imp:0.4,bal:0.8,partners:1,hhi:0.51}
+  },
+  // South Asia
+  pk:{
+    name:'Pakistan',
+    exports:[1.8,0.2,0.2,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartners:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartnerVals:[52.4,18.8,12.4,8.6,5.4,2.4,0],
+    importPartners:['Textiles','Rice','Leather','Fruits','Chemicals','Pharma','Other'],
+    importPartnerVals:[38.4,22.4,12.8,10.2,8.6,4.8,2.8],
+    trend:{exp:[0.8,0.7,0.9,1.2,1.6,1.4,1.6,2.0,1.9,1.8],imp:[0.1,0.1,0.2,0.2,0.2,0.2,0.3,0.3,0.3,0.3]},
+    balance:[0.7,0.6,0.7,1.0,1.4,1.2,1.3,1.7,1.6,1.5],
+    kpi:{exp:1.8,imp:0.3,bal:1.5,partners:1,hhi:0.33}
+  },
+  bd:{
+    name:'Bangladesh',
+    exports:[0.6,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Fertilisers','Chemicals','Other','—','—','—'],
+    exportPartners:['LNG','Fertilisers','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[62.4,20.8,12.2,4.6,0,0,0],
+    importPartners:['Garments (HS61)','Textiles','Jute','Pharma','Leather','Other','—'],
+    importPartnerVals:[52.4,20.8,12.4,8.6,4.2,1.6,0],
+    trend:{exp:[0.3,0.2,0.3,0.4,0.5,0.5,0.6,0.7,0.6,0.6],imp:[0.0,0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.3,0.2,0.2,0.3,0.4,0.4,0.5,0.6,0.5,0.5],
+    kpi:{exp:0.6,imp:0.1,bal:0.5,partners:1,hhi:0.44}
+  },
+  lk:{
+    name:'Sri Lanka',
+    exports:[0.4,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[72.4,18.2,9.4,0,0,0,0],
+    importPartners:['Tea (HS0902)','Garments','Rubber products','Coconut products','Spices','Other','—'],
+    importPartnerVals:[48.4,22.4,12.8,8.6,5.2,2.6,0],
+    trend:{exp:[0.2,0.2,0.2,0.3,0.4,0.3,0.4,0.4,0.4,0.4],imp:[0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.2,0.1,0.1,0.2,0.3,0.2,0.3,0.3,0.3,0.3],
+    kpi:{exp:0.4,imp:0.1,bal:0.3,partners:1,hhi:0.56}
+  },
+  np:{
+    name:'Nepal',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[68.4,22.2,9.4,0,0,0,0],
+    importPartners:['Carpets','Garments','Herbs','Spices','Handicrafts','Other','—'],
+    importPartnerVals:[42.4,28.4,12.8,8.6,5.2,2.6,0],
+    trend:{exp:[0.05,0.05,0.06,0.07,0.08,0.08,0.09,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.06,0.07,0.08,0.08,0.09,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.52}
+  },
+  // Southeast Asia
+  my:{
+    name:'Malaysia',
+    exports:[2.2,0.2,0.1,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','Chemicals','Aluminium','Plastics','Fertilisers','Other','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Plastics','Fertilisers','Other','—'],
+    exportPartnerVals:[60.4,14.8,10.2,7.4,4.8,2.4,0],
+    importPartners:['Palm oil (HS1511)','Electronics','Machinery','Rubber','Chemicals','Timber','Other'],
+    importPartnerVals:[38.4,22.4,14.8,10.2,7.6,4.2,2.4],
+    trend:{exp:[1.2,1.0,1.4,1.8,2.2,1.8,2.0,2.6,2.4,2.2],imp:[0.3,0.3,0.4,0.4,0.5,0.4,0.5,0.6,0.6,0.6]},
+    balance:[0.9,0.7,1.0,1.4,1.7,1.4,1.5,2.0,1.8,1.6],
+    kpi:{exp:2.2,imp:0.6,bal:1.6,partners:1,hhi:0.42}
+  },
+  th:{
+    name:'Thailand',
+    exports:[1.6,0.2,0.1,0.1,0.0,0.0,0.1],
+    exportLabels:['LNG','Chemicals','Plastics','Aluminium','Other','—','—'],
+    exportPartners:['LNG','Chemicals','Plastics','Aluminium','Other','—','—'],
+    exportPartnerVals:[62.4,16.8,10.4,6.8,3.6,0,0],
+    importPartners:['Vehicles (HS87)','Rice','Machinery','Electronics','Canned food','Rubber','Other'],
+    importPartnerVals:[28.4,22.8,16.4,12.8,10.2,5.8,3.6],
+    trend:{exp:[0.8,0.7,0.9,1.2,1.5,1.2,1.4,1.8,1.7,1.6],imp:[0.2,0.2,0.3,0.3,0.4,0.4,0.4,0.5,0.5,0.5]},
+    balance:[0.6,0.5,0.6,0.9,1.1,0.8,1.0,1.3,1.2,1.1],
+    kpi:{exp:1.6,imp:0.5,bal:1.1,partners:1,hhi:0.44}
+  },
+  id:{
+    name:'Indonesia',
+    exports:[2.8,0.2,0.1,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartners:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartnerVals:[58.4,16.8,10.4,8.6,4.2,1.6,0],
+    importPartners:['Palm oil (HS1511)','Coal','Rubber','Garments','Machinery','Timber','Other'],
+    importPartnerVals:[36.4,20.8,14.2,12.8,8.6,5.4,1.8],
+    trend:{exp:[1.4,1.2,1.6,2.0,2.6,2.2,2.4,3.0,2.9,2.8],imp:[0.3,0.3,0.4,0.4,0.5,0.5,0.5,0.6,0.6,0.6]},
+    balance:[1.1,0.9,1.2,1.6,2.1,1.7,1.9,2.4,2.3,2.2],
+    kpi:{exp:2.8,imp:0.6,bal:2.2,partners:1,hhi:0.39}
+  },
+  ph:{
+    name:'Philippines',
+    exports:[0.8,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartners:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[62.4,22.8,10.2,4.6,0,0,0],
+    importPartners:['Electronics','Garments','Bananas','Coconut oil','Machinery','Other','—'],
+    importPartnerVals:[38.4,22.8,14.2,12.4,8.6,3.6,0],
+    trend:{exp:[0.4,0.3,0.4,0.6,0.8,0.6,0.7,0.9,0.8,0.8],imp:[0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.4,0.2,0.3,0.5,0.7,0.5,0.6,0.8,0.7,0.7],
+    kpi:{exp:0.8,imp:0.1,bal:0.7,partners:1,hhi:0.46}
+  },
+  vn:{
+    name:'Vietnam',
+    exports:[0.6,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Fertilisers','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Fertilisers','Other','—','—','—'],
+    exportPartnerVals:[58.4,22.8,12.4,6.4,0,0,0],
+    importPartners:['Electronics (HS85)','Garments','Footwear','Coffee','Machinery','Seafood','Other'],
+    importPartnerVals:[34.2,22.4,14.8,12.2,8.6,5.4,2.4],
+    trend:{exp:[0.2,0.2,0.3,0.4,0.6,0.5,0.5,0.7,0.6,0.6],imp:[0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.2]},
+    balance:[0.1,0.1,0.2,0.3,0.4,0.3,0.3,0.5,0.4,0.4],
+    kpi:{exp:0.6,imp:0.2,bal:0.4,partners:1,hhi:0.40}
+  },
+  // Europe
+  it:{
+    name:'Italy',
+    exports:[1.4,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Plastics','Other','—','—'],
+    exportPartnerVals:[64.4,16.8,10.4,5.8,2.6,0,0],
+    importPartners:['Machinery','Vehicles','Pharma','Luxury goods','Food & wine','Steel','Other'],
+    importPartnerVals:[24.2,20.8,16.4,14.8,12.2,7.6,4.0],
+    trend:{exp:[0.6,0.5,0.8,1.0,1.3,1.1,1.2,1.6,1.5,1.4],imp:[0.3,0.3,0.4,0.4,0.5,0.5,0.5,0.6,0.6,0.6]},
+    balance:[0.3,0.2,0.4,0.6,0.8,0.6,0.7,1.0,0.9,0.8],
+    kpi:{exp:1.4,imp:0.6,bal:0.8,partners:1,hhi:0.46}
+  },
+  nl:{
+    name:'Netherlands',
+    exports:[2.8,0.3,0.1,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','Chemicals','Naphtha','Aluminium','LPG','Other','—'],
+    exportPartners:['LNG','Chemicals','Naphtha','Aluminium','LPG','Other','—'],
+    exportPartnerVals:[66.4,14.8,8.4,5.8,3.2,1.4,0],
+    importPartners:['Machinery','Chemicals','Pharma','Dairy products','Electronics','Logistics svcs','Other'],
+    importPartnerVals:[28.4,20.8,16.4,12.8,10.2,7.6,3.8],
+    trend:{exp:[1.4,1.2,1.6,2.2,2.8,2.2,2.4,3.0,2.9,2.8],imp:[0.4,0.4,0.5,0.5,0.6,0.6,0.6,0.7,0.7,0.7]},
+    balance:[1.0,0.8,1.1,1.7,2.2,1.6,1.8,2.3,2.2,2.1],
+    kpi:{exp:2.8,imp:0.7,bal:2.1,partners:1,hhi:0.49}
+  },
+  es:{
+    name:'Spain',
+    exports:[1.2,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[66.4,18.2,10.8,4.6,0,0,0],
+    importPartners:['Machinery','Vehicles','Food & olive oil','Pharma','Chemicals','Textiles','Other'],
+    importPartnerVals:[24.4,22.8,18.4,14.2,10.8,6.2,3.2],
+    trend:{exp:[0.6,0.5,0.7,0.9,1.2,1.0,1.1,1.4,1.3,1.2],imp:[0.2,0.2,0.3,0.3,0.4,0.3,0.4,0.4,0.4,0.4]},
+    balance:[0.4,0.3,0.4,0.6,0.8,0.7,0.7,1.0,0.9,0.8],
+    kpi:{exp:1.2,imp:0.4,bal:0.8,partners:1,hhi:0.50}
+  },
+  be:{
+    name:'Belgium',
+    exports:[0.8,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[64.4,20.8,10.4,4.4,0,0,0],
+    importPartners:['Chemicals','Pharma','Diamonds','Machinery','Food','Other','—'],
+    importPartnerVals:[28.4,24.8,18.4,14.2,10.6,3.6,0],
+    trend:{exp:[0.4,0.3,0.4,0.6,0.8,0.7,0.7,0.9,0.8,0.8],imp:[0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.3,0.3,0.3]},
+    balance:[0.3,0.2,0.2,0.4,0.6,0.5,0.5,0.6,0.5,0.5],
+    kpi:{exp:0.8,imp:0.3,bal:0.5,partners:1,hhi:0.48}
+  },
+  ch:{
+    name:'Switzerland',
+    exports:[0.4,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[60.4,28.8,10.8,0,0,0,0],
+    importPartners:['Pharma','Watches & luxury','Machinery','Chemicals','Medical devices','Financial svcs','Other'],
+    importPartnerVals:[28.4,26.8,18.4,12.8,8.2,4.2,1.2],
+    trend:{exp:[0.2,0.2,0.2,0.3,0.4,0.3,0.4,0.4,0.4,0.4],imp:[0.2,0.2,0.3,0.3,0.4,0.3,0.4,0.4,0.4,0.4]},
+    balance:[0.0,0.0,-0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0],
+    kpi:{exp:0.4,imp:0.4,bal:0.0,partners:1,hhi:0.42}
+  },
+  at:{
+    name:'Austria',
+    exports:[0.3,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[62.4,26.8,10.8,0,0,0,0],
+    importPartners:['Machinery','Steel products','Chemicals','Pharma','Vehicles','Other','—'],
+    importPartnerVals:[32.4,24.8,18.4,14.2,8.6,1.6,0],
+    trend:{exp:[0.1,0.1,0.2,0.2,0.3,0.2,0.2,0.3,0.3,0.3],imp:[0.1,0.1,0.1,0.1,0.2,0.1,0.2,0.2,0.2,0.2]},
+    balance:[0.0,0.0,0.1,0.1,0.1,0.1,0.0,0.1,0.1,0.1],
+    kpi:{exp:0.3,imp:0.2,bal:0.1,partners:1,hhi:0.44}
+  },
+  gr:{
+    name:'Greece',
+    exports:[1.0,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[76.4,16.8,6.8,0,0,0,0],
+    importPartners:['Shipping services','Aluminium','Chemicals','Machinery','Food','Other','—'],
+    importPartnerVals:[32.4,22.8,18.4,14.2,8.6,3.6,0],
+    trend:{exp:[0.4,0.3,0.5,0.7,1.0,0.8,0.9,1.1,1.0,1.0],imp:[0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.2,0.2]},
+    balance:[0.3,0.2,0.4,0.5,0.8,0.6,0.7,0.9,0.8,0.8],
+    kpi:{exp:1.0,imp:0.2,bal:0.8,partners:1,hhi:0.62}
+  },
+  tr:{
+    name:'Turkey',
+    exports:[1.8,0.2,0.2,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartners:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartnerVals:[52.4,18.8,12.4,8.6,5.4,2.4,0],
+    importPartners:['Steel (HS72)','Textiles','Vehicles','Construction matls','Machinery','Food','Other'],
+    importPartnerVals:[26.4,20.8,16.4,14.2,12.8,6.2,3.2],
+    trend:{exp:[0.8,0.7,0.9,1.2,1.6,1.4,1.6,2.0,1.9,1.8],imp:[0.2,0.2,0.3,0.3,0.4,0.4,0.4,0.5,0.5,0.5]},
+    balance:[0.6,0.5,0.6,0.9,1.2,1.0,1.2,1.5,1.4,1.3],
+    kpi:{exp:1.8,imp:0.5,bal:1.3,partners:1,hhi:0.35}
+  },
+  // Americas
+  ca:{
+    name:'Canada',
+    exports:[0.8,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartners:['LNG','Chemicals','Aluminium','Other','—','—','—'],
+    exportPartnerVals:[58.4,22.8,12.4,6.4,0,0,0],
+    importPartners:['Wheat (HS1001)','Canola oil','Machinery','Pharma','Aircraft','Chemicals','Other'],
+    importPartnerVals:[34.2,22.4,16.8,12.4,8.6,3.8,1.8],
+    trend:{exp:[0.4,0.3,0.4,0.6,0.8,0.7,0.7,0.9,0.8,0.8],imp:[0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.3,0.3,0.3]},
+    balance:[0.3,0.2,0.2,0.4,0.6,0.5,0.5,0.6,0.5,0.5],
+    kpi:{exp:0.8,imp:0.3,bal:0.5,partners:1,hhi:0.40}
+  },
+  br:{
+    name:'Brazil',
+    exports:[0.6,0.1,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LNG','Fertilisers','Aluminium','Other','—','—'],
+    exportPartners:['Chemicals','LNG','Fertilisers','Aluminium','Other','—','—'],
+    exportPartnerVals:[34.4,28.8,20.4,10.8,5.6,0,0],
+    importPartners:['Poultry (HS0207)','Sugar (HS1701)','Soy','Beef','Coffee','Iron ore','Other'],
+    importPartnerVals:[34.2,22.4,16.8,10.4,8.6,5.4,2.2],
+    trend:{exp:[0.2,0.2,0.3,0.4,0.5,0.5,0.5,0.7,0.6,0.6],imp:[0.2,0.2,0.3,0.3,0.4,0.4,0.4,0.5,0.5,0.5]},
+    balance:[0.0,0.0,0.0,0.1,0.1,0.1,0.1,0.2,0.1,0.1],
+    kpi:{exp:0.6,imp:0.5,bal:0.1,partners:1,hhi:0.22}
+  },
+  ar:{
+    name:'Argentina',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LNG','Other','—','—','—','—'],
+    exportPartners:['Chemicals','LNG','Other','—','—','—','—'],
+    exportPartnerVals:[48.4,34.8,16.8,0,0,0,0],
+    importPartners:['Soybean oil','Beef','Wheat','Dairy','Wine','Other','—'],
+    importPartnerVals:[38.4,24.8,18.4,10.2,5.6,2.6,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.2,0.2,0.2,0.2],imp:[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.0,0.0,0.0,0.0,0.1,0.0,0.1,0.1,0.1,0.1],
+    kpi:{exp:0.2,imp:0.1,bal:0.1,partners:1,hhi:0.30}
+  },
+  mx:{
+    name:'Mexico',
+    exports:[0.3,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[62.4,26.8,10.8,0,0,0,0],
+    importPartners:['Vehicles','Electronics','Machinery','Metals','Chemicals','Food','Other'],
+    importPartnerVals:[32.4,24.8,18.4,12.8,6.2,3.8,1.6],
+    trend:{exp:[0.1,0.1,0.1,0.2,0.3,0.2,0.3,0.3,0.3,0.3],imp:[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.0,0.0,0.0,0.1,0.2,0.1,0.2,0.2,0.2,0.2],
+    kpi:{exp:0.3,imp:0.1,bal:0.2,partners:1,hhi:0.46}
+  },
+  // MENA
+  eg:{
+    name:'Egypt',
+    exports:[0.8,0.2,0.1,0.1,0.1,0.0,0.1],
+    exportLabels:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartners:['LNG','LPG','Chemicals','Fertilisers','Aluminium','Other','—'],
+    exportPartnerVals:[44.4,22.8,14.4,10.2,5.8,2.4,0],
+    importPartners:['Vegetables','Fruits','Textiles','Chemicals','Construction','Pharma','Other'],
+    importPartnerVals:[34.4,22.8,16.4,12.8,8.6,3.4,1.6],
+    trend:{exp:[0.3,0.3,0.4,0.6,0.8,0.6,0.7,0.9,0.8,0.8],imp:[0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.3,0.3,0.3]},
+    balance:[0.2,0.2,0.2,0.4,0.6,0.4,0.5,0.6,0.5,0.5],
+    kpi:{exp:0.8,imp:0.3,bal:0.5,partners:1,hhi:0.26}
+  },
+  jo:{
+    name:'Jordan',
+    exports:[0.4,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartners:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[48.4,26.8,16.4,8.4,0,0,0],
+    importPartners:['Vegetables','Fruits','Phosphates','Potash','Chemicals','Food','Other'],
+    importPartnerVals:[38.4,28.8,14.4,8.6,5.4,2.8,1.6],
+    trend:{exp:[0.2,0.2,0.2,0.3,0.4,0.3,0.4,0.4,0.4,0.4],imp:[0.1,0.1,0.1,0.1,0.2,0.1,0.2,0.2,0.2,0.2]},
+    balance:[0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.2,0.2],
+    kpi:{exp:0.4,imp:0.2,bal:0.2,partners:1,hhi:0.32}
+  },
+  lb:{
+    name:'Lebanon',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Other','—','—','—','—'],
+    exportPartners:['LNG','LPG','Other','—','—','—','—'],
+    exportPartnerVals:[54.4,32.8,12.8,0,0,0,0],
+    importPartners:['Food','Chemicals','Machinery','Vehicles','Other','—','—'],
+    importPartnerVals:[42.4,22.8,18.4,10.8,5.6,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.0,0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.1,0.1,0.0,0.0,0.1,0.0,0.0,0.1,0.1,0.1],
+    kpi:{exp:0.2,imp:0.1,bal:0.1,partners:1,hhi:0.41}
+  },
+  iq:{
+    name:'Iraq',
+    exports:[0.3,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[56.4,28.8,14.8,0,0,0,0],
+    importPartners:['Food','Construction materials','Chemicals','Vehicles','Consumer goods','Other','—'],
+    importPartnerVals:[38.4,24.8,16.4,12.8,5.6,2.0,0],
+    trend:{exp:[0.1,0.1,0.2,0.2,0.3,0.2,0.2,0.3,0.3,0.3],imp:[0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.1,0.0,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],
+    kpi:{exp:0.3,imp:0.1,bal:0.2,partners:1,hhi:0.38}
+  },
+  ir:{
+    name:'Iran',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','Other','—','—','—','—','—'],
+    exportPartners:['Chemicals','Other','—','—','—','—','—'],
+    exportPartnerVals:[68.4,31.6,0,0,0,0,0],
+    importPartners:['Food','Construction','Chemicals','Consumer goods','Other','—','—'],
+    importPartnerVals:[48.4,24.8,16.4,8.6,1.8,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.0,0.0,0.0,0.0,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.1,0.1,0.1,0.0,0.0,0.0,0.0,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.51}
+  },
+  ma:{
+    name:'Morocco',
+    exports:[0.4,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartners:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[52.4,26.8,14.4,6.4,0,0,0],
+    importPartners:['Phosphates','Food','Textiles','Chemicals','Machinery','Other','—'],
+    importPartnerVals:[38.4,22.8,16.4,12.8,6.2,3.4,0],
+    trend:{exp:[0.2,0.2,0.2,0.3,0.4,0.3,0.3,0.4,0.4,0.4],imp:[0.0,0.0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.2,0.2,0.1,0.2,0.3,0.2,0.2,0.3,0.3,0.3],
+    kpi:{exp:0.4,imp:0.1,bal:0.3,partners:1,hhi:0.35}
+  },
+  tn:{
+    name:'Tunisia',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Other','—','—','—','—'],
+    exportPartners:['LNG','LPG','Other','—','—','—','—'],
+    exportPartnerVals:[56.4,30.8,12.8,0,0,0,0],
+    importPartners:['Food (olive oil)','Textiles','Phosphates','Chemicals','Machinery','Other','—'],
+    importPartnerVals:[38.4,24.8,18.4,10.8,5.6,2.0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.2,0.2,0.2,0.2],imp:[0.0,0.0,0.0,0.0,0.1,0.0,0.1,0.1,0.1,0.1]},
+    balance:[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+    kpi:{exp:0.2,imp:0.1,bal:0.1,partners:1,hhi:0.40}
+  },
+  ly:{
+    name:'Libya',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Other','—','—','—','—'],
+    exportPartners:['LNG','LPG','Other','—','—','—','—'],
+    exportPartnerVals:[58.4,30.8,10.8,0,0,0,0],
+    importPartners:['Food','Construction','Chemicals','Consumer goods','Other','—','—'],
+    importPartnerVals:[48.4,28.8,12.4,7.6,2.8,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.0,0.0,0.0,0.0,0.1,0.0,0.1,0.1,0.1,0.1]},
+    balance:[0.1,0.1,0.1,0.1,0.1,0.1,0.0,0.1,0.1,0.1],
+    kpi:{exp:0.2,imp:0.1,bal:0.1,partners:1,hhi:0.42}
+  },
+  ye:{
+    name:'Yemen',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Food aid','Chemicals','Other','—','—','—'],
+    exportPartners:['LPG','Food aid','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[52.4,28.8,12.4,6.4,0,0,0],
+    importPartners:['Food','Fuel','Construction','Medical','Other','—','—'],
+    importPartnerVals:[52.4,22.8,12.4,8.6,3.8,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],
+    kpi:{exp:0.2,imp:0.05,bal:0.15,partners:1,hhi:0.35}
+  },
+  // Africa
+  za:{
+    name:'South Africa',
+    exports:[0.6,0.1,0.1,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartners:['LNG','LPG','Chemicals','Other','—','—','—'],
+    exportPartnerVals:[52.4,22.8,16.4,8.4,0,0,0],
+    importPartners:['Minerals & metals','Machinery','Vehicles','Chemicals','Food & wine','Other','—'],
+    importPartnerVals:[32.4,24.8,18.4,12.8,8.6,3.0,0],
+    trend:{exp:[0.2,0.2,0.3,0.4,0.6,0.5,0.5,0.7,0.6,0.6],imp:[0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.2,0.2]},
+    balance:[0.1,0.1,0.2,0.3,0.4,0.3,0.3,0.5,0.4,0.4],
+    kpi:{exp:0.6,imp:0.2,bal:0.4,partners:1,hhi:0.33}
+  },
+  ng:{
+    name:'Nigeria',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LPG','Other','—','—','—','—'],
+    exportPartners:['Chemicals','LPG','Other','—','—','—','—'],
+    exportPartnerVals:[52.4,30.8,16.8,0,0,0,0],
+    importPartners:['Food','Construction','Consumer goods','Chemicals','Other','—','—'],
+    importPartnerVals:[48.4,24.8,14.4,8.6,3.8,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],
+    kpi:{exp:0.2,imp:0.05,bal:0.15,partners:1,hhi:0.38}
+  },
+  et:{
+    name:'Ethiopia',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[58.4,28.8,12.8,0,0,0,0],
+    importPartners:['Coffee (HS0901)','Sesame','Pulses','Leather','Cut flowers','Other','—'],
+    importPartnerVals:[48.4,18.8,14.4,10.2,5.6,2.6,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.40}
+  },
+  ke:{
+    name:'Kenya',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[56.4,28.8,14.8,0,0,0,0],
+    importPartners:['Tea (HS0902)','Cut flowers','Coffee','Vegetables','Other','—','—'],
+    importPartnerVals:[48.4,22.8,14.4,10.2,4.2,0,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.44}
+  },
+  so:{
+    name:'Somalia',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Food aid','Other','—','—','—','—'],
+    exportPartners:['LPG','Food aid','Other','—','—','—','—'],
+    exportPartnerVals:[52.4,36.8,10.8,0,0,0,0],
+    importPartners:['Live sheep (HS0104)','Livestock','Other','—','—','—','—'],
+    importPartnerVals:[72.4,22.8,4.8,0,0,0,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]},
+    balance:[-0.05,-0.05,-0.05,-0.04,-0.02,-0.03,-0.02,0.0,0.0,0.0],
+    kpi:{exp:0.1,imp:0.1,bal:0.0,partners:1,hhi:0.58}
+  },
+  dz:{
+    name:'Algeria',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[62.4,26.8,10.8,0,0,0,0],
+    importPartners:['Food','Construction','Chemicals','Consumer goods','Other','—','—'],
+    importPartnerVals:[44.4,24.8,16.4,10.6,3.8,0,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],
+    kpi:{exp:0.2,imp:0.05,bal:0.15,partners:1,hhi:0.44}
+  },
+  tz:{
+    name:'Tanzania',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[60.4,28.8,10.8,0,0,0,0],
+    importPartners:['Coffee','Tea','Cashews','Gold','Sisal','Other','—'],
+    importPartnerVals:[38.4,22.8,16.4,12.8,6.2,3.4,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.40}
+  },
+  // Oceania
+  au:{
+    name:'Australia',
+    exports:[1.2,0.2,0.1,0.1,0.0,0.0,0.0],
+    exportLabels:['LNG','LPG','Aluminium','Chemicals','Other','—','—'],
+    exportPartners:['LNG','LPG','Aluminium','Chemicals','Other','—','—'],
+    exportPartnerVals:[54.4,20.8,12.4,8.6,3.8,0,0],
+    importPartners:['Wheat (HS1001)','Live sheep','Sugar','Beef','Dairy','Coal','Other'],
+    importPartnerVals:[28.4,22.8,16.4,12.8,10.2,6.2,3.2],
+    trend:{exp:[0.6,0.5,0.7,0.9,1.2,1.0,1.1,1.4,1.3,1.2],imp:[0.5,0.5,0.6,0.6,0.7,0.7,0.8,0.9,0.8,0.8]},
+    balance:[0.1,0.0,0.1,0.3,0.5,0.3,0.3,0.5,0.5,0.4],
+    kpi:{exp:1.2,imp:0.8,bal:0.4,partners:1,hhi:0.36}
+  },
+  nz:{
+    name:'New Zealand',
+    exports:[0.2,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LNG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[62.4,26.8,10.8,0,0,0,0],
+    importPartners:['Dairy (HS0401)','Powdered milk','Butter','Lamb','Wool','Other','—'],
+    importPartnerVals:[42.4,24.8,16.4,10.2,4.6,1.6,0],
+    trend:{exp:[0.1,0.1,0.1,0.1,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.2,0.2,0.2,0.3,0.3,0.3,0.3,0.4,0.4,0.4]},
+    balance:[-0.1,-0.1,-0.1,-0.2,-0.1,-0.2,-0.2,-0.2,-0.2,-0.2],
+    kpi:{exp:0.2,imp:0.4,bal:-0.2,partners:1,hhi:0.47}
+  },
+  // CIS
+  ru:{
+    name:'Russia',
+    exports:[0.2,0.1,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LNG','Other','—','—','—','—'],
+    exportPartners:['Chemicals','LNG','Other','—','—','—','—'],
+    exportPartnerVals:[48.4,36.8,14.8,0,0,0,0],
+    importPartners:['Wheat','Steel','Fertilisers','Machinery','Chemicals','Other','—'],
+    importPartnerVals:[34.4,24.8,18.4,12.8,6.2,3.4,0],
+    trend:{exp:[0.2,0.2,0.2,0.2,0.2,0.1,0.1,0.2,0.2,0.2],imp:[0.2,0.2,0.3,0.3,0.3,0.1,0.1,0.1,0.1,0.1]},
+    balance:[0.0,0.0,-0.1,-0.1,-0.1,0.0,0.0,0.1,0.1,0.1],
+    kpi:{exp:0.2,imp:0.1,bal:0.1,partners:1,hhi:0.32}
+  },
+  kz:{
+    name:'Kazakhstan',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['Chemicals','LPG','Other','—','—','—','—'],
+    exportPartners:['Chemicals','LPG','Other','—','—','—','—'],
+    exportPartnerVals:[54.4,30.8,14.8,0,0,0,0],
+    importPartners:['Wheat','Metals','Machinery','Chemicals','Other','—','—'],
+    importPartnerVals:[42.4,24.8,16.4,12.8,3.6,0,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.40}
+  },
+  uz:{
+    name:'Uzbekistan',
+    exports:[0.1,0.0,0.0,0.0,0.0,0.0,0.0],
+    exportLabels:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartners:['LPG','Chemicals','Other','—','—','—','—'],
+    exportPartnerVals:[58.4,28.8,12.8,0,0,0,0],
+    importPartners:['Cotton','Food','Metals','Chemicals','Other','—','—'],
+    importPartnerVals:[48.4,22.8,14.4,10.8,3.6,0,0],
+    trend:{exp:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],imp:[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},
+    balance:[0.05,0.05,0.05,0.06,0.08,0.07,0.08,0.1,0.1,0.1],
+    kpi:{exp:0.1,imp:0.05,bal:0.05,partners:1,hhi:0.44}
+  }
+};
+
+function updateDashboard(){
+  if(!chartsInitialized.dashboard) return;
+  const sel=document.getElementById('sel-country');
+  const key=sel.value;
+  const d=COUNTRY_DATA[key]||COUNTRY_DATA.world;
+  const r=currentCurrency==='QAR'?QAR_RATE:1, s=currentCurrency==='USD'?'$':'QAR ';
+  const fmt=(v,d=1)=>s+(v*r).toFixed(d)+'B';
+
+  // Update title
+  document.getElementById('dash-title').textContent=`Qatar \u2194 ${d.name} \u2014 Goods (HS${currentHSLevel})`;
+
+  // KPIs
+  document.getElementById('kpi-exp').textContent=fmt(d.kpi.exp);
+  document.getElementById('kpi-imp').textContent=fmt(d.kpi.imp);
+  const bal=d.kpi.bal;
+  document.getElementById('kpi-bal').textContent=(bal>=0?'+':'')+fmt(Math.abs(bal));
+  document.getElementById('kpi-bal').style.color=bal>=0?'var(--green)':'#e74c3c';
+  document.getElementById('bal-big').textContent=(bal>=0?'+':'')+fmt(Math.abs(bal));
+  document.getElementById('bal-big').style.color=bal>=0?'var(--green)':'#e74c3c';
+  if(key==='world'){
+    document.getElementById('kpi-partners').textContent='187';
+    document.getElementById('kpi-hhi').textContent='HHI 0.34';
+  } else {
+    document.getElementById('kpi-partners').textContent='1';
+    document.getElementById('kpi-hhi').textContent='HHI '+d.kpi.hhi.toFixed(2);
+  }
+
+  // Trend chart
+  hC.data.datasets[0].data=d.trend.exp.map(v=>+(v*r).toFixed(1));
+  hC.data.datasets[1].data=d.trend.imp.map(v=>+(v*r).toFixed(1));
+  hC.options.scales.y.ticks.callback=v=>s+v+'B';
+  hC.update();
+
+  // Balance chart
+  bC.data.datasets[0].data=d.balance.map(v=>+(v*r).toFixed(1));
+  bC.data.datasets[0].backgroundColor=d.balance.map(v=>v>=0?'rgba(26,188,156,0.7)':'rgba(231,76,60,0.7)');
+  bC.data.datasets[0].borderColor=d.balance.map(v=>v>=0?'#1abc9c':'#e74c3c');
+  bC.options.scales.y.ticks.callback=v=>s+v+'B';
+  bC.update();
+
+  // Product composition
+  const nonZeroExp=d.exportLabels.map((l,i)=>({l,v:d.exports[i]})).filter(x=>x.v>0);
+  cC.data.labels=nonZeroExp.map(x=>x.l);
+  cC.data.datasets[0].data=nonZeroExp.map(x=>+(x.v*r).toFixed(1));
+  cC.options.scales.x.ticks.callback=v=>s+v+'B';
+  cC.update();
+
+  // Export partners (for world, show countries; for specific partner, show products)
+  pC.data.labels=d.exportPartners.filter((_,i)=>d.exportPartnerVals[i]>0);
+  pC.data.datasets[0].data=d.exportPartnerVals.filter(v=>v>0);
+  pC.update();
+
+  // Import sourcing
+  iC.data.labels=d.importPartners.filter((_,i)=>d.importPartnerVals[i]>0);
+  iC.data.datasets[0].data=d.importPartnerVals.filter(v=>v>0);
+  iC.update();
+}
+function exportData(){alert('Production: export filtered dataset as CSV from UN Comtrade API with HS'+currentHSLevel+' and transport filters active.');}
+
+// ─────────────────────────────────────────────
+// ESSENTIAL GOODS TAB
+// ─────────────────────────────────────────────
+let egDepC, egRiskC, egCountryC, egModeC;
+
+const EG_DATA = {
+  dairy:       {name:'Dairy Products',        importDep:88, hhi:0.28, hormuzExp:95, bufferDays:90,  topSuppliers:[['New Zealand',34],['Australia',22],['Netherlands',18],['France',11],['Other',15]], modes:{sea:98,air:2,road:0}, shockRisk:92, riskLevel:'high',   analysis:'New Zealand and Australia together supply over 55% of Qatar\'s dairy imports. All shipments transit the Strait of Hormuz. The 2017 blockade exposed the vulnerability; Qatar since boosted local dairy (Baladna), but powdered milk and baby formula remain almost entirely imported. A Hormuz closure creates a 90-day buffer before stockpile depletion.'},
+  redmeat:     {name:'Red Meat & Live Sheep', importDep:78, hhi:0.38, hormuzExp:95, bufferDays:21,  topSuppliers:[['Australia',48],['Somalia',19],['India',14],['Brazil',12],['Other',7]],  modes:{sea:95,air:0,road:5}, shockRisk:88, riskLevel:'high',   analysis:'Australia dominates at 48% — the longest single-origin supply chain for a perishable essential good. Live sheep are transported by sea over 6,000km. A Hormuz disruption or an Australian export ban (as occurred with live export controversies) creates immediate shortage. Somalia supplies ~19% via shorter Red Sea routes — itself a geopolitical risk zone.'},
+  poultry:     {name:'White Meat (Poultry)',  importDep:58, hhi:0.31, hormuzExp:70, bufferDays:14,  topSuppliers:[['Qatar (local)',42],['Brazil',28],['USA',14],['France',9],['Other',7]],   modes:{sea:88,air:0,road:12}, shockRisk:58, riskLevel:'medium', analysis:'Qatar achieved ~42% self-sufficiency in chilled poultry post-blockade, led by state-backed producers. However frozen poultry imports from Brazil remain the backbone of volume supply. Road imports via Saudi Arabia represent ~12%, providing a partial non-Hormuz alternative. The US 2025 tariff tensions add a moderate risk dimension.'},
+  vegfruit:    {name:'Vegetables & Fruits',   importDep:82, hhi:0.21, hormuzExp:64, bufferDays:7,   topSuppliers:[['India',38],['Jordan',18],['Egypt',14],['Qatar (local)',12],['Other',18]],  modes:{sea:64,air:0,road:36}, shockRisk:76, riskLevel:'critical', analysis:'The most time-sensitive essential good — shelf life of days to 2 weeks maximum. India supplies 38% by volume, entirely by sea. Critically, Jordan and Egypt supply via the land corridor through Saudi Arabia (36% road share), providing partial Hormuz independence. However Indian volumes cannot be re-routed by road. Local Qatari production covers only ~12%, primarily hydroponics (Miraah, Al-Sulaiteen).'},
+  fish:        {name:'Fish & Seafood',        importDep:45, hhi:0.35, hormuzExp:82, bufferDays:5,   topSuppliers:[['Qatar (local)',55],['India',18],['Norway',12],['Oman',8],['Other',7]],   modes:{sea:82,air:18,road:0}, shockRisk:42, riskLevel:'medium', analysis:'Qatar\'s domestic fishing fleet provides ~55% of supply, making this one of the most food-secure essential goods. Premium imports (Norwegian salmon) arrive by air, which is Hormuz-independent. Oman imports via sea represent a GCC-adjacent short route. The main risk is domestic fleet capacity constraints during extreme weather or geopolitical restrictions.'},
+  oils:        {name:'Cooking Oils & Ghee',   importDep:98, hhi:0.29, hormuzExp:100, bufferDays:60, topSuppliers:[['Malaysia',44],['Indonesia',28],['India',14],['Ukraine',8],['Other',6]],  modes:{sea:100,air:0,road:0}, shockRisk:94, riskLevel:'high',   analysis:'100% sea-imported, 100% Hormuz-transiting. Palm oil from Malaysia/Indonesia is non-substitutable at scale — Qatar has no alternatives. Ukraine\'s sunflower oil share (~8%) creates an additional Russia-Ukraine conflict exposure. The high 44%/28% concentration on two Southeast Asian origins, both sea-only, yields a very high compound risk score.'},
+  rice:        {name:'Rice',                  importDep:100, hhi:0.46, hormuzExp:100, bufferDays:180,topSuppliers:[['India',62],['Pakistan',18],['Thailand',11],['Vietnam',6],['Other',3]],  modes:{sea:100,air:0,road:0}, shockRisk:96, riskLevel:'critical', analysis:'The single most strategically concentrated essential food. India supplies 62% — and India has imposed rice export bans (2023) that directly shocked Gulf markets. Pakistan (18%) adds South Asia concentration risk. No land alternative exists. Qatar holds strategic stockpiles estimated at ~6 months of consumption. HHI of 0.46 is the highest of any controlled commodity, indicating extreme source concentration.'},
+  sugar:       {name:'Sugar',                 importDep:100, hhi:0.27, hormuzExp:100, bufferDays:120,topSuppliers:[['Brazil',42],['India',24],['Thailand',16],['Australia',10],['Other',8]],  modes:{sea:100,air:0,road:0}, shockRisk:82, riskLevel:'high',   analysis:'Brazil provides 42%, with good source diversification across 4 continents — making this moderate-to-high rather than critical. However 100% sea dependency and 100% Hormuz exposure remain. India\'s sugar export restrictions (recurring since 2022) are the primary policy risk. Strategic reserves cover ~4 months.'},
+  tea:         {name:'Tea',                   importDep:100, hhi:0.24, hormuzExp:96, bufferDays:90,  topSuppliers:[['Sri Lanka',38],['India',28],['Kenya',18],['China',10],['Other',6]],     modes:{sea:96,air:4,road:0}, shockRisk:62, riskLevel:'medium', analysis:'Well-diversified across four very different origin regions — South Asia, East Africa, East Asia — reducing geopolitical concentration risk. Sri Lanka\'s 2022 economic crisis did briefly disrupt exports, showing that even diversified sources carry sovereign risk. Cultural significance in Qatar makes this a high-visibility consumer good despite its relatively modest volume.'},
+  coffee:      {name:'Coffee & Products',     importDep:100, hhi:0.19, hormuzExp:90, bufferDays:90,  topSuppliers:[['Brazil',32],['Colombia',18],['Vietnam',16],['Ethiopia',12],['Other',22]], modes:{sea:90,air:10,road:0}, shockRisk:48, riskLevel:'low',    analysis:'Best-diversified commodity on the list with HHI of just 0.19. Five continents represented in the supply mix. Air freight (10%) provides a partial Hormuz-independent channel for high-value roasted coffee. Climate risk (El Niño impacts on Brazilian and Vietnamese production) is the primary long-term concern rather than geopolitical disruption.'},
+  eggs:        {name:'Table Eggs',            importDep:22, hhi:0.62, hormuzExp:18, bufferDays:14,   topSuppliers:[['Qatar (local)',78],['Turkey',10],['India',8],['Other',4]],               modes:{sea:0,air:0,road:22}, shockRisk:18, riskLevel:'low',    analysis:'Qatar\'s greatest food security success story post-2017 blockade. Baladna and other producers drove local production to ~78%. Turkey and India provide small top-up volumes. Almost entirely Hormuz-independent due to local production dominance. The main risk is input dependency — feed grain (corn, soy) is still imported, meaning egg production is indirectly exposed to supply chain disruptions.'},
+  canned:      {name:'Canned & Frozen Foods', importDep:92, hhi:0.18, hormuzExp:92, bufferDays:180, topSuppliers:[['Thailand',28],['India',22],['UAE',18],['China',14],['Other',18]],        modes:{sea:92,air:0,road:8}, shockRisk:70, riskLevel:'medium', analysis:'Highly diversified source mix (HHI 0.18) provides resilience. UAE re-export channel (18%) offers a partial buffer. Long shelf life makes this the most stockpile-friendly category — reserves can cover 6+ months. Sea dependency is high but the diversity of origins reduces single-source risk significantly.'},
+  flour:       {name:'Flour & Wheat',         importDep:96, hhi:0.23, hormuzExp:100, bufferDays:150, topSuppliers:[['Australia',38],['USA',24],['Canada',18],['Ukraine',12],['Other',8]],    modes:{sea:100,air:0,road:0}, shockRisk:88, riskLevel:'high',   analysis:'Western-origin dominated — Australia, USA, Canada together supply 80%. Good geopolitical diversification but 100% sea/Hormuz reliance. Ukraine\'s 12% share (sunflower oil and wheat combined) is the active conflict risk. Qatar\'s industrial milling capacity means raw wheat imports are processed locally, providing some strategic processing buffer. Strategic stockpile estimated at ~5 months.'},
+  vehicles:    {name:'Transport & Vehicles',  importDep:100, hhi:0.22, hormuzExp:88, bufferDays:60,  topSuppliers:[['Japan',38],['S. Korea',22],['Germany',18],['USA',12],['Other',10]],       modes:{sea:88,air:0,road:12}, shockRisk:64, riskLevel:'medium', analysis:'Well-diversified across three distinct manufacturing regions. Japan/South Korea dominate at 60% combined. Road imports from the wider GCC provide 12% partial resilience. The 2025 US tariff escalation has raised costs for American brands. Supply chain disruptions (semiconductors, shipping) post-COVID demonstrated the sector\'s vulnerability to non-geopolitical shocks.'},
+  baby:        {name:'Baby Essentials',       importDep:95, hhi:0.24, hormuzExp:80, bufferDays:30,   topSuppliers:[['China',42],['USA',22],['Germany',14],['India',12],['Other',10]],          modes:{sea:80,air:20,road:0}, shockRisk:72, riskLevel:'medium', analysis:'China\'s 42% dominance in baby products (diapers, clothing, accessories) creates a geopolitical concentration risk given US-China tensions. Air freight (20%) provides Hormuz-independent delivery for urgent items. However air volumes cannot substitute for bulk sea shipments of diapers and formula accessories. US tariff actions on Chinese goods affect re-export pricing through UAE channels.'},
+  construction:{name:'Construction Materials',importDep:88, hhi:0.19, hormuzExp:94, bufferDays:90,  topSuppliers:[['UAE',32],['China',28],['Turkey',18],['India',12],['Other',10]],           modes:{sea:94,air:0,road:6}, shockRisk:58, riskLevel:'medium', analysis:'UAE re-exports (32%) provide regional proximity advantage and a partial buffer via GCC road corridors. China\'s 28% share for steel and prefabricated elements reflects Qatar\'s construction infrastructure reliance on Chinese supply chains. Turkey (18%) supplies across the Red Sea route, adding a separate geopolitical exposure. Relatively long stockpile tolerance as construction can slow without immediate consumer impact.'}
+};
+
+const EG_SHOCK_DATA = [
+  {name:'Rice',         risk:96, color:'#c0392b'},
+  {name:'Cooking Oil',  risk:94, color:'#c0392b'},
+  {name:'Dairy',        risk:92, color:'#e74c3c'},
+  {name:'Flour',        risk:88, color:'#e74c3c'},
+  {name:'Red Meat',     risk:88, color:'#e74c3c'},
+  {name:'Sugar',        risk:82, color:'#e74c3c'},
+  {name:'Vegetables',   risk:76, color:'#f39c12'},
+  {name:'Baby Goods',   risk:72, color:'#f39c12'},
+  {name:'Canned Food',  risk:70, color:'#f39c12'},
+  {name:'Vehicles',     risk:64, color:'#f39c12'},
+  {name:'Construction', risk:58, color:'#f39c12'},
+  {name:'Poultry',      risk:58, color:'#f39c12'},
+  {name:'Tea',          risk:62, color:'#f39c12'},
+  {name:'Coffee',       risk:48, color:'#1abc9c'},
+  {name:'Fish',         risk:42, color:'#1abc9c'},
+  {name:'Eggs',         risk:18, color:'#1abc9c'}
+];
+
+function initEssential(){
+  if(chartsInitialized.essential) return;
+  chartsInitialized.essential=true;
+
+  const GOLD='#c9a84c',TEAL='#2ab0c4',RED='#e74c3c',CRIT='#c0392b',ORANGE='#f39c12',GREEN='#1abc9c',NAVY='#0a1628',DIM='rgba(142,163,192,0.7)';
+  const tip={callbacks:{label:ctx=>' '+ctx.dataset.label+': '+ctx.formattedValue}};
+  const leg=()=>({labels:{color:DIM,font:{size:10,family:'IBM Plex Mono'}},position:'bottom'});
+
+  // 1. Import Dependency bar chart
+  const depLabels=['Dairy','Red Meat','Poultry','Veg & Fruit','Fish','Cook. Oil','Rice','Sugar','Tea','Coffee','Eggs','Canned','Flour','Vehicles','Baby','Constr.'];
+  const depVals   =[88,78,58,82,45,98,100,100,100,100,22,92,96,100,95,88];
+  const depColors = depVals.map(v=>v>=90?CRIT:v>=75?RED:v>=50?ORANGE:GREEN);
+  egDepC=new Chart(document.getElementById('egDepChart'),{
+    type:'bar',
+    data:{labels:depLabels,datasets:[{label:'Import Dependency %',data:depVals,backgroundColor:depColors,borderColor:depColors,borderWidth:1}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:tip},
+      scales:{
+        x:{ticks:{color:DIM,font:{size:10,family:'IBM Plex Mono'},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'},max:100,title:{display:true,text:'% Imported',color:DIM,font:{size:10}}},
+        y:{ticks:{color:DIM,font:{size:9,family:'IBM Plex Mono'}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+
+  // 2. Risk Scatter — HHI vs Import Dependency
+  const riskPoints = Object.entries(EG_DATA).map(([k,v])=>({x:v.hhi,y:v.importDep,r:Math.max(6,v.shockRisk/10),label:v.name,risk:v.riskLevel}));
+  const riskColorMap={critical:CRIT,high:RED,medium:ORANGE,low:GREEN};
+  egRiskC=new Chart(document.getElementById('egRiskChart'),{
+    type:'bubble',
+    data:{datasets:[{label:'Commodities',data:riskPoints,backgroundColor:riskPoints.map(p=>riskColorMap[p.risk]+'bb'),borderColor:riskPoints.map(p=>riskColorMap[p.risk]),borderWidth:1}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const p=ctx.raw;return ` ${p.label} | HHI: ${p.x.toFixed(2)} | Dep: ${p.y}%`;}}},
+      annotation:{annotations:{}}},
+      scales:{
+        x:{ticks:{color:DIM,font:{size:10,family:'IBM Plex Mono'}},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'Source Concentration (HHI — higher = more concentrated)',color:DIM,font:{size:10}}},
+        y:{ticks:{color:DIM,font:{size:10,family:'IBM Plex Mono'},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'Import Dependency %',color:DIM,font:{size:10}}}
+      }
+    }
+  });
+
+  // 3. Country origin stacked/grouped bar
+  const countries=['India','Brazil','Australia','Malaysia','Indonesia','China','New Zealand','USA','Thailand','Jordan','Pakistan','Other'];
+  const countryShare=[36, 18, 22, 8, 6, 8, 6, 6, 6, 3, 3, 3];
+  const countryColors=[RED,TEAL,GOLD,'#9b59b6','#e67e22','#e74c3c','#2ecc71','#3498db','#1abc9c',ORANGE,'#f1c40f',DIM];
+  egCountryC=new Chart(document.getElementById('egCountryChart'),{
+    type:'doughnut',
+    data:{labels:countries,datasets:[{data:countryShare,backgroundColor:countryColors.map(c=>c+'cc'),borderColor:NAVY,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'42%',plugins:{legend:leg(),tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}%`}}}}
+  });
+
+  // 4. Mode split for essential goods
+  egModeC=new Chart(document.getElementById('egModeChart'),{
+    type:'doughnut',
+    data:{labels:['Sea (Hormuz-routed)','Road (GCC corridors)','Air (Hormuz-independent)','Local Production'],datasets:[{data:[78,10,5,7],backgroundColor:[RED+'cc',ORANGE+'cc',TEAL+'cc',GREEN+'cc'],borderColor:NAVY,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'42%',plugins:{legend:leg(),tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}%`}}}}
+  });
+
+  // 5. Shock grid
+  const grid=document.getElementById('eg-shock-grid');
+  if(grid){
+    grid.innerHTML='';
+    EG_SHOCK_DATA.forEach(item=>{
+      const div=document.createElement('div');
+      div.style.cssText='background:rgba(17,34,64,0.8);border:1px solid rgba(255,255,255,0.06);padding:.8rem .6rem;text-align:center;';
+      div.innerHTML=`<div style="font-family:\'IBM Plex Mono\',monospace;font-size:1rem;font-weight:700;color:${item.color};">${item.risk}%</div><div style="font-size:.6rem;color:#8ea3c0;font-family:\'IBM Plex Mono\',monospace;margin-top:.3rem;line-height:1.3;">${item.name}</div><div style="margin-top:.5rem;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;"><div style="width:${item.risk}%;height:100%;background:${item.color};border-radius:2px;"></div></div>`;
+      grid.appendChild(div);
+    });
+  }
+}
+
+// Filter cards
+function egFilter(type,btn){
+  document.querySelectorAll('.eg-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const grid=document.getElementById('eg-cards-grid');
+  if(!grid) return;
+  grid.querySelectorAll('.eg-commodity-card').forEach(card=>{
+    const cat=card.dataset.cat, risk=card.dataset.risk, hormuz=card.dataset.hormuz;
+    let show=true;
+    if(type==='food') show=cat==='food';
+    else if(type==='nonfood') show=cat==='nonfood';
+    else if(type==='critical') show=risk==='critical';
+    else if(type==='high') show=risk==='high'||risk==='critical';
+    else if(type==='hormuz') show=hormuz==='true';
+    card.style.display=show?'':'none';
+  });
+}
+
+// Detail panel on card click
+function egSelect(card,key){
+  document.querySelectorAll('.eg-commodity-card').forEach(c=>c.classList.remove('selected'));
+  card.classList.add('selected');
+  const d=EG_DATA[key]; if(!d) return;
+  const rMap={critical:'#ff6b6b',high:'#e74c3c',medium:'#f39c12',low:'#1abc9c'};
+  const rLabel={critical:'🚨 CRITICAL',high:'🔴 HIGH',medium:'🟡 MEDIUM',low:'🟢 LOW'};
+  const modeBar=(label,pct,col)=>pct>0?`<div style="margin-bottom:.3rem;"><div style="display:flex;justify-content:space-between;font-size:.62rem;font-family:'IBM Plex Mono',monospace;color:#8ea3c0;margin-bottom:2px;"><span>${label}</span><span>${pct}%</span></div><div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;"><div style="width:${pct}%;height:100%;background:${col};border-radius:3px;"></div></div></div>`:'';
+  const hormuzBadge=d.hormuzExp>0?`<span class="eg-impact-tag eg-impact-hormuz">⚓ Hormuz ${d.hormuzExp}% exposed</span>`:'';
+  const panel=document.getElementById('eg-detail');
+  panel.style.display='block';
+  panel.innerHTML=`
+  <div class="section-label" style="margin-bottom:1rem;">${d.name} — Detailed Supply Chain Analysis</div>
+  <div class="eg-detail-grid">
+    <div>
+      <div style="font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem;">Origin Countries</div>
+      ${d.topSuppliers.map(([c,p])=>`<div class="eg-dep-bar-row"><span class="eg-dep-bar-label" style="width:80px;">${c}</span><div class="eg-dep-bar-wrap"><div class="eg-dep-bar-fill" style="width:${p}%;background:${p>40?RED:p>20?GOLD:TEAL};"></div></div><span class="eg-dep-bar-pct">${p}%</span></div>`).join('')}
+      <div style="margin-top:.8rem;font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;">Source HHI: <span style="color:${d.hhi>0.35?RED:d.hhi>0.25?ORANGE:GREEN};font-weight:700;">${d.hhi.toFixed(2)}</span> <span style="color:#8ea3c0;">(${d.hhi>0.35?'Highly concentrated':d.hhi>0.25?'Moderately concentrated':'Well diversified'})</span></div>
+    </div>
+    <div>
+      <div style="font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem;">Transport Mode Split</div>
+      ${modeBar('🚢 Sea (Hormuz)',d.modes.sea,'#e74c3c')}
+      ${modeBar('🚛 Road (GCC corridors)',d.modes.road,'#f39c12')}
+      ${modeBar('✈ Air (Hormuz-independent)',d.modes.air,'#2ab0c4')}
+      <div style="margin-top:.8rem;display:flex;flex-wrap:wrap;gap:.4rem;">${hormuzBadge}<span style="display:inline-flex;align-items:center;gap:.3rem;padding:3px 8px;font-size:.62rem;font-family:'IBM Plex Mono',monospace;border-radius:2px;border:1px solid rgba(26,188,156,.3);background:rgba(26,188,156,.1);color:#1abc9c;">Buffer: ~${d.bufferDays} days</span></div>
+    </div>
+    <div>
+      <div style="font-size:.65rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem;">Risk Assessment</div>
+      <div style="margin-bottom:.8rem;"><span class="eg-risk-pill ${d.riskLevel}" style="font-size:.68rem;">${rLabel[d.riskLevel]} RISK</span></div>
+      <div style="margin-bottom:.5rem;"><div style="font-size:.62rem;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Hormuz Shock Score</div><div style="height:8px;background:rgba(255,255,255,.07);border-radius:4px;"><div style="width:${d.shockRisk}%;height:100%;background:${rMap[d.riskLevel]};border-radius:4px;"></div></div><div style="font-size:.62rem;color:${rMap[d.riskLevel]};font-family:'IBM Plex Mono',monospace;margin-top:2px;">${d.shockRisk}/100</div></div>
+      <div style="font-size:.72rem;color:var(--text-dim);line-height:1.65;margin-top:.6rem;">${d.analysis}</div>
+    </div>
+  </div>`;
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const GOLD='#c9a84c',TEAL='#2ab0c4',RED='#e74c3c';
+}
+</script>
+</body>
+</html>
